@@ -4,9 +4,9 @@ This is a fork of [RotationMaster](https://github.com/Ellamental2/RotationMaster
 
 ## Changes in this fork
 
-- **Manual rotation restart** — double-tap the Alt1 hotkey (or use the "Restart Rotation" button) to jump back to the first rotation at any time. A single press still cycles rotations as before; either action now gets a brief grace period before automatic phase detection can override it, so a manual change actually sticks instead of being immediately reverted.
+- **Manual rotation restart** — triple-tap the Alt1 hotkey (or use the "Restart Rotation" button) to jump back to the first rotation at any time. A single press still cycles rotations as before; either action now gets a brief grace period before automatic phase detection can override it, so a manual change actually sticks instead of being immediately reverted.
 
-- **Reduced phase/wave detection overhead** — the full-screen capture + template match + OCR read used for phase/wave tracking now runs every 750ms instead of every 250ms. This fixed a significant FPS drop (100+ down to ~60, with visible stutter) during fights, at the cost of phase changes being detected up to half a second later — imperceptible in practice given how long phases typically last.
+- **Reduced phase/wave detection overhead** — the full-screen capture + template match + OCR read used for phase/wave tracking now runs every 500ms instead of every 250ms. This fixed a significant FPS drop (100+ down to ~60, with visible stutter) during fights, at the cost of phase changes being detected up to half a second later — imperceptible in practice given how long phases typically last.
 
 - **Duplicate ability colour-coding** — when an ability appears more than once in a rotation, each occurrence gets its own small coloured dot in the corner of its icon. Every instance of that same ability shares its colour (e.g. every "Varanus's Mercy" is the same shade), while a different repeated ability gets a different colour. This makes it easier to keep your place in a long rotation without your eyes accidentally jumping to a different occurrence of the same ability further down the sequence.
 
