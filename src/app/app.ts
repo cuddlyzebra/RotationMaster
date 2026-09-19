@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, DOCUMENT, Inject, signal } from '@angular/core';
-import { Ability, BoolSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
+import { BoolSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
 import { blankSettings } from '../assets/blankSettings';
 import patchnotes from '../patchnotes.json';
 import { PatchNotesComponent } from './patch-notes/patch-notes';
@@ -326,25 +326,27 @@ export class App implements AfterViewInit {
   private findWave(): Position | null {
     let img = a1base.captureHoldFullRs();
 
-     // try phase
-    poslist = img.findSubimage(this.imgs['phase']);
+    // try phase
+    let phasePoslist = img.findSubimage(this.imgs['phase']);
+    console.log('findWave: phase matches =', phasePoslist.length, this.imgs['phase']);
 
-    if (poslist.length > 0){
+    if (phasePoslist.length > 0){
       return new Position(
-        poslist[0].x,
-        poslist[0].y,
-        90,
-        24,
-        24,
-        12
+        phasePoslist[0].x,
+        phasePoslist[0].y,
+        98,   // matches the new border-only template (98x31), measured across 5 independent captures
+        31,   // (3 phase numbers, 2 backgrounds, both capture paths — mean pixel diff 0.14/255)
+        25,   // local x-offset where "Phase: " text begins within the matched region
+        10    // local y-offset where text begins
       )
     };
 
-    var poslist = img.findSubimage(this.imgs['wave']);
-    if (poslist.length > 0){
+    let wavePoslist = img.findSubimage(this.imgs['wave']);
+    console.log('findWave: wave matches =', wavePoslist.length, this.imgs['wave']);
+    if (wavePoslist.length > 0){
       return new Position(
-        poslist[0].x - 10,
-        poslist[0].y - 24,
+        wavePoslist[0].x - 10,
+        wavePoslist[0].y - 24,
         90,
         24,
         24,
@@ -353,12 +355,13 @@ export class App implements AfterViewInit {
     }
 
     // try kiln wave
-    poslist = img.findSubimage(this.imgs['kiln_wave']);
+    let kilnPoslist = img.findSubimage(this.imgs['kiln_wave']);
+    console.log('findWave: kiln_wave matches =', kilnPoslist.length, this.imgs['kiln_wave']);
 
-    if(poslist.length > 0) {
+    if(kilnPoslist.length > 0) {
       return new Position(
-        poslist[0].x + 21,
-        poslist[0].y - 15,
+        kilnPoslist[0].x + 21,
+        kilnPoslist[0].y - 15,
         74,
         18,
         21,
@@ -380,19 +383,46 @@ export class App implements AfterViewInit {
 
     let imgData = img.toData(pos.x, pos.y, pos.w, pos.h);
 
-    const canvas = this.document.createElement('canvas');
-    canvas.width = imgData.width;
-    canvas.height = imgData.height;
-    const ctx = canvas.getContext('2d');
-
-    ctx?.putImageData(imgData, 0, 0);
-
-    const imgDataUrl = canvas.toDataURL();
-
     if (str == null || str.length == 0) {
-      //if (!this.waveCountFont) { this.waveCountFont = await fetch("../assets/fonts/aa_10px-mono.fontmeta.json").then(res => res.json()); }
-      //str = ocr.findReadLine(imgData, this.waveCountFont!, [[227,204,207]], 0, 14, pos.w, 10).text;
-      await Tesseract.recognize(imgDataUrl,'eng').then(({ data: { text } }) => { str = text; });
+      // bindReadColorString reads against the "chat" font definition -- fine for
+      // actual chatbox text, but boss-mechanic banners (Phase/wave counters) are
+      // rendered in a different in-game font, so it reliably returns nothing here
+      // regardless of pixel color. That's expected, not a bug -- fall through to OCR.
+
+      // Tesseract needs much more contrast and size than a raw ~30px-tall UI crop
+      // gives it. Upscale with smoothing (soft edges read better than blocky
+      // nearest-neighbor for OCR), then binarize: this element's text luminance
+      // (>120) is well-separated from its background/fill luminance (<45 measured),
+      // so a hard threshold turns a low-contrast screenshot into a clean
+      // black-background/white-text image.
+      const scale = 4;
+      const rawCanvas = this.document.createElement('canvas');
+      rawCanvas.width = imgData.width;
+      rawCanvas.height = imgData.height;
+      rawCanvas.getContext('2d')?.putImageData(imgData, 0, 0);
+
+      const upCanvas = this.document.createElement('canvas');
+      upCanvas.width = imgData.width * scale;
+      upCanvas.height = imgData.height * scale;
+      const upCtx = upCanvas.getContext('2d');
+
+      if (upCtx) {
+        upCtx.imageSmoothingEnabled = true;
+        upCtx.drawImage(rawCanvas, 0, 0, upCanvas.width, upCanvas.height);
+
+        const upData = upCtx.getImageData(0, 0, upCanvas.width, upCanvas.height);
+        const d = upData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const luminance = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          const v = luminance > 120 ? 255 : 0;
+          d[i] = d[i + 1] = d[i + 2] = v;
+        }
+        upCtx.putImageData(upData, 0, 0);
+
+        const upscaledDataUrl = upCanvas.toDataURL();
+        await Tesseract.recognize(upscaledDataUrl, 'eng').then(({ data: { text } }) => { str = text; });
+      }
+
       if (str == null || str.length == 0) {
         console.log("No wave text found");
         return null;
@@ -866,6 +896,91 @@ export class App implements AfterViewInit {
 
   getBossHealth(): number {
     return 100;
+  }
+// --- Debug: export the FULL captureHoldFullRs() capture, the same call findWave() uses ---
+async captureFullRsDebug(): Promise<void> {
+  if (!this.hasAlt1()) {
+    console.log('captureFullRsDebug: Alt1 not detected');
+    return;
+  }
+
+  const img = a1base.captureHoldFullRs();
+  const w = (img as any).width ?? alt1.rsWidth;
+  const h = (img as any).height ?? alt1.rsHeight;
+
+  console.log('captureFullRsDebug: capturing', w, 'x', h);
+
+  const imgData = img.toData(0, 0, w, h);
+
+  const canvas = this.document.createElement('canvas');
+  canvas.width = imgData.width;
+  canvas.height = imgData.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.log('captureFullRsDebug: could not get canvas context');
+    return;
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  const dataUrl = canvas.toDataURL('image/png');
+  const link = this.document.createElement('a');
+  link.href = dataUrl;
+  link.download = `alt1-fullrs-${Date.now()}.png`;
+  link.click();
+
+  console.log('captureFullRsDebug: download triggered');
+}
+
+
+  // --- Debug: capture a region centered on the mouse cursor, for building new templates ---
+  async captureRegionAtMouse(): Promise<void> {
+    if (!this.hasAlt1()) {
+      console.log('captureRegionAtMouse: Alt1 not detected');
+      return;
+    }
+
+    console.log('captureRegionAtMouse: start');
+
+    for (let i = 3; i > 0; i--) {
+      alt1.setTooltip(`Capturing in ${i}...`);
+      console.log(`captureRegionAtMouse: countdown ${i}`);
+      await this.timeout(1000);
+    }
+
+    console.log('captureRegionAtMouse: countdown finished, capturing now');
+    alt1.clearTooltip();
+
+    const mouse = a1lib.getMousePosition();
+    if (!mouse) {
+      console.log('captureRegionAtMouse: could not get mouse position');
+      return;
+    }
+
+    const w = 150;
+    const h = 60;
+    const x = Math.round(mouse.x - w / 2);
+    const y = Math.round(mouse.y - h / 2);
+
+    const img = a1base.captureHold(x, y, w, h);
+    const imgData = img.toData(x, y, w, h);
+
+    const canvas = this.document.createElement('canvas');
+    canvas.width = imgData.width;
+    canvas.height = imgData.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.log('captureRegionAtMouse: could not get canvas context');
+      return;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = this.document.createElement('a');
+    link.href = dataUrl;
+    link.download = `alt1-capture-${Date.now()}.png`;
+    link.click();
+
+    console.log('captureRegionAtMouse: download triggered', { x, y, w, h });
   }
 
   async loadImage(src: string): Promise<ImageData> {
