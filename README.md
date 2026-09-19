@@ -16,6 +16,10 @@ This is a fork of [RotationMaster](https://github.com/Ellamental2/RotationMaster
 
 ![Rotation preview with duplicate-ability colour coding](src/assets/testingimg1.png)
 
+### How to install
+
+Copy and paste this line into your web browser `alt1://addapp/https://cuddlyzebra.github.io/RotationMaster/appconfig.json` - optionally, you can edit the title yourself when prompted to install, to help distinguish this version over the original version of the app.
+
 ## Credit
 
 All core functionality (rotation building, the Alt1 overlay, wave/phase detection, settings) is from the original [RotationMaster](https://github.com/Ellamental2/RotationMaster) project. This fork only adds the changes described above.
