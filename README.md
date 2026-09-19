@@ -6,7 +6,7 @@ This is a fork of [RotationMaster](https://github.com/Ellamental2/RotationMaster
 
 - **Duplicate ability colour-coding** — when an ability appears more than once in a rotation, each occurrence gets its own small coloured dot in the corner of its icon. Every instance of that same ability shares its colour (e.g. every "Varanus's Mercy" is the same shade), while a different repeated ability gets a different colour. This makes it easier to keep your place in a long rotation without your eyes accidentally jumping to a different occurrence of the same ability further down the sequence.
 
-- **Phase detection rework** — phase/wave transitions are now tracked using coloured status circles plus direct on-screen phase reading, replacing the earlier ability-greying based detection. This gives more reliable phase advancement during fights where the old approach could misfire.
+- **Phase detection rework** — phase/wave transitions are now tracked using coloured status circles plus direct on-screen phase reading. This gives more reliable phase advancement during fights where the old approach could misfire.
 
 ### Example
 
