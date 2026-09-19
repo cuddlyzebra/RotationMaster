@@ -17,6 +17,7 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
   @Input() lineBreakSpacing: number = 0;
   @Input() selectedRotationIndex: number = 0;
   @Input() previewOnly: boolean = false;
+  @Input() currentAbilityIndex: number = -1;
 
   @Output() changeSelectedRotation = new EventEmitter<number>();
   @Output() rotationSetChange = new EventEmitter<RotationSet>();

@@ -73,6 +73,27 @@
                 transform: translateZ(0); /* Force GPU acceleration */
                 will-change: transform; /* Hint for animations */
             }
+
+            &.ability-used .ability-image {
+                filter: grayscale(100%) brightness(0.55);
+                opacity: 0.55;
+            }
+
+            &.ability-duplicate {
+                // solid corner dot only — no border/box-shadow
+                &::after {
+                    content: '';
+                    position: absolute;
+                    top: -3px;
+                    right: -3px;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background: var(--duplicate-color, transparent);
+                    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+                    pointer-events: none;
+                }
+            }
         }
 
         .ability-blank-slot {
@@ -84,4 +105,3 @@
         }
     }
 }
-

@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, DOCUMENT, Inject, signal } from '@angular/core';
-import { BoolSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
+import { Ability, BoolSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
 import { blankSettings } from '../assets/blankSettings';
 import patchnotes from '../patchnotes.json';
 import { PatchNotesComponent } from './patch-notes/patch-notes';
@@ -10,6 +10,7 @@ import * as a1lib from 'alt1';
 import * as a1base from 'alt1/base';
 import * as ocr from 'alt1/ocr';
 import Tesseract from 'tesseract.js';
+import { isBlankSpacer } from '../abilitiesLookup';
 
 @Component({
   selector: 'app-root',
@@ -18,7 +19,7 @@ import Tesseract from 'tesseract.js';
   styleUrl: './app.scss'
 })
 export class App implements AfterViewInit {
-  
+
 
   imgs: any = {};
 
@@ -39,16 +40,19 @@ export class App implements AfterViewInit {
   private cachedOverlayEncoded: string | null = null;
   private cachedOverlayWidth = 0;
   private lastWaveCheck = 0;
-  
+
+  // Ability-progress tracking (grey-out-on-use feature)
+  currentAbilityIndex: number = -1;
+
   // Settings related properties
   settings: SettingConfig[] = [];
   elementCache: Record<string, HTMLElement | null> = {};
   Output: HTMLElement | null = null;
-  
+
   // Settings signals
   protected readonly rangeSettings = signal<RangeSettingConfig[]>([]);
   protected readonly boolSettings = signal<BoolSettingConfig[]>([]);
-  
+
   //get a specific setting value
   getSettingValue(name: string): any {
     const setting = this.settings.find(s => s.name === name);
@@ -104,7 +108,7 @@ export class App implements AfterViewInit {
       "health": healthImg
     });
   }
-  
+
   ngAfterViewInit() {
     if (!this.hasAlt1()) {
       return;
@@ -130,7 +134,7 @@ export class App implements AfterViewInit {
     const settingToUpdate = this.settings.find(setting => setting.name === settingName);
     if (settingToUpdate) {
       settingToUpdate.value = settingValue;
-      
+
       // Update signals if needed
       if (settingToUpdate.type === SettingTypeEnum.Range) {
         this.rangeSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Range) as RangeSettingConfig[]);
@@ -148,7 +152,7 @@ export class App implements AfterViewInit {
     currentSettings[settingName] = settingValue;
     localStorage.setItem(`${this.appName}_settings`, JSON.stringify(currentSettings));
   }
-  
+
   async showPatchNotes(showAll: boolean) {
     const lastKnownVersion = showAll ? '0.0.1' : this.settings.find(s => s.name === 'lastKnownVersion')?.value || '0.0.1';
 
@@ -209,7 +213,7 @@ export class App implements AfterViewInit {
         s.value = savedSettings[s.name] ?? s.value;
       });
     }
-    
+
     // Initialize range and bool settings signals
     this.rangeSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Range && !s.hidden) as RangeSettingConfig[]);
     this.boolSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Boolean && !s.hidden) as BoolSettingConfig[]);
@@ -240,12 +244,13 @@ export class App implements AfterViewInit {
   exitPreviewMode(): void {
     this.onUpdateSetting({ name: 'previewOnly', value: false });
   }
-  
+
   cycleRotationSet() {
     var numRots = this.selectedRotationSet?.Data.length || 0;
     if (numRots <= 1) { return; }
 
     this.selectedIndex = (this.selectedIndex + 1) % numRots; // Cycle through rotations
+    this.resetAbilityProgress();
 
     //update selected value of radiobuttons in ui
     const rotationRadios = document.querySelectorAll('input[name="rotationSelector"]');
@@ -255,7 +260,26 @@ export class App implements AfterViewInit {
 
     this.markOverlayDirty();
     this.showRotationNameOverlay();
-    
+
+  }
+
+  // --- Ability-progress tracking (grey-out-on-use feature) ---
+
+  resetAbilityProgress(): void {
+    this.currentAbilityIndex = -1;
+    this.markOverlayDirty();
+  }
+
+  advanceAbility(): void {
+    const selectedRotation = this.selectedRotationSet.Data[this.selectedIndex];
+    if (!selectedRotation) { return; }
+    const totalTrackedItems = selectedRotation.Data.filter(
+      s => s.SelectedAbility && !isBlankSpacer(s.SelectedAbility)
+    ).length;
+    if (this.currentAbilityIndex + 1 < totalTrackedItems) {
+      this.currentAbilityIndex++;
+      this.markOverlayDirty();
+    }
   }
 
   private initializeOverlay() {
@@ -387,12 +411,12 @@ export class App implements AfterViewInit {
     let oldPosition = this.getSettingValue('overlayPosition') || { x: 100, y: 100 };
     this.updatingOverlayPosition = true;
     this.getById('rotationMaster')?.classList.toggle('positioning', this.updatingOverlayPosition);
-    
+
     const updatePosition = async () => {
       if (!this.updatingOverlayPosition) {
         return;
       }
-      
+
       alt1.setTooltip('Press Alt+1 to save position');
       let abilitiesElement = this.getById('OverlayCanvasOutput');
       const uiScale = this.getSettingValue('uiScale') || 100;
@@ -409,24 +433,24 @@ export class App implements AfterViewInit {
           )
         }
       });
-      
+
       // Schedule next update using requestAnimationFrame for smooth updates
       requestAnimationFrame(() => {
-        updatePosition(); 
-        
+        updatePosition();
+
         // Check if current rotation has abilities to show appropriate message
         const selectedRotation = this.selectedRotationSet.Data[this.selectedIndex ?? 0];
         const hasAbilities = selectedRotation && selectedRotation.Data.some(selection => selection.SelectedAbility);
         const message = hasAbilities ? "Updating overlay position..." : "Populate a rotation for better positioning...";
-        
+
         this.showRotationNameOverlay(message);
       });
     };
-    
+
     // Start the position update loop
     updatePosition();
   }
-  
+
   stopUpdatingOverlayPosition() {
     this.updatingOverlayPosition = false;
     this.getById('rotationMaster')?.classList.toggle('positioning', false);
@@ -439,7 +463,7 @@ export class App implements AfterViewInit {
     const previewId = `rotation-preview-${this.selectedIndex}`;
     return this.getById(previewId);
   }
-  
+
   private currentBossHealth: number | null = null;
   private currentWave: number | null = null;
 
@@ -497,12 +521,13 @@ export class App implements AfterViewInit {
         this.selectedRotationSet.Data.some(rs => rs.Wave == this.currentWave) &&
         this.selectedRotationSet.Data[this.selectedIndex]?.Wave != this.currentWave) {
           this.selectedIndex = this.selectedRotationSet.Data.findIndex(rs => rs.Wave == this.currentWave);
+          this.resetAbilityProgress();
           this.markOverlayDirty();
           this.showRotationNameOverlay();
       }
 
       const selectedRotation = this.selectedRotationSet.Data[this.selectedIndex ?? 0] || this.selectedRotationSet;
-      
+
       if (!selectedRotation) {
         console.error('No rotation is selected.');
         return;
@@ -537,12 +562,12 @@ export class App implements AfterViewInit {
 
       // Check if the overlay has content and visible dimensions
       const computedStyle = getComputedStyle(overlay);
-      
+
       // Check if element is actually visible
-      const isVisible = computedStyle.display !== 'none' && 
-                       computedStyle.visibility !== 'hidden' && 
+      const isVisible = computedStyle.display !== 'none' &&
+                       computedStyle.visibility !== 'hidden' &&
                        computedStyle.opacity !== '0';
-      
+
       if (!isVisible) {
         // Schedule the next update
         setTimeout(() => requestAnimationFrame(updateOverlay), refreshRate);
@@ -556,39 +581,39 @@ export class App implements AfterViewInit {
       overlay.style.display = 'block';
       overlay.style.width = 'auto';
       overlay.style.height = 'auto';
-      
+
       // Force reflow
       overlay.offsetHeight;
 
       // Try to get dimensions from multiple sources
       let width = overlay.offsetWidth;
       let height = overlay.offsetHeight;
-      
+
       // If still zero, try scroll dimensions
       if (width === 0 || height === 0) {
         width = overlay.scrollWidth;
         height = overlay.scrollHeight;
       }
-      
+
       // If still zero, try getBoundingClientRect after forcing layout
       if (width === 0 || height === 0) {
         const newRect = overlay.getBoundingClientRect();
         width = newRect.width;
         height = newRect.height;
       }
-      
+
       // Calculate content dimensions based on children if still zero
       if (width === 0 || height === 0) {
         const children = overlay.children;
         if (children.length > 0) {
           let maxWidth = 0;
           let totalHeight = 0;
-          
+
           for (let i = 0; i < children.length; i++) {
             const child = children[i] as HTMLElement;
             const childRect = child.getBoundingClientRect();
             const childComputedStyle = getComputedStyle(child);
-            
+
             // Get child dimensions
             const childWidth = Math.max(
               childRect.width,
@@ -602,16 +627,16 @@ export class App implements AfterViewInit {
               child.scrollHeight,
               parseInt(childComputedStyle.height, 10) || 0
             );
-            
+
             maxWidth = Math.max(maxWidth, childWidth);
             totalHeight += childHeight;
           }
-          
+
           if (maxWidth > 0) width = maxWidth;
           if (totalHeight > 0) height = totalHeight;
         }
       }
-      
+
       // Restore original styles
       overlay.style.visibility = '';
       overlay.style.position = '';
@@ -621,7 +646,7 @@ export class App implements AfterViewInit {
       overlay.style.height = '';
 
       if (width === 0 || height === 0) {
-        
+
         // Check if children have dimensions
         if (overlay.children.length > 0) {
           for (let i = 0; i < overlay.children.length; i++) {
@@ -630,7 +655,7 @@ export class App implements AfterViewInit {
             // console.log(`Child ${i}:`, child.tagName, childRect);
           }
         }
-        
+
         // Schedule the next update
         setTimeout(() => requestAnimationFrame(updateOverlay), refreshRate);
         return;
@@ -640,46 +665,46 @@ export class App implements AfterViewInit {
 
       const uiScale = this.getSettingValue('uiScale') || 100;
       const abilitiesPerRow = this.getSettingValue('abilitiesPerRow') || 10;
-      
+
       try {
         const totalTrackedItems = selectedRotation.Data.filter((abilitySelection) => abilitySelection.SelectedAbility).length;
-        
+
         // Calculate dimensions with minimum values, using detected dimensions as fallback
         // Account for padding and border in the dimensions
         const paddingLeft = parseInt(computedStyle.paddingLeft, 10) || 0;
         const paddingRight = parseInt(computedStyle.paddingRight, 10) || 0;
         const paddingTop = parseInt(computedStyle.paddingTop, 10) || 0;
         const paddingBottom = parseInt(computedStyle.paddingBottom, 10) || 0;
-        
+
         const borderLeft = parseInt(computedStyle.borderLeftWidth, 10) || 0;
         const borderRight = parseInt(computedStyle.borderRightWidth, 10) || 0;
         const borderTop = parseInt(computedStyle.borderTopWidth, 10) || 0;
         const borderBottom = parseInt(computedStyle.borderBottomWidth, 10) || 0;
-        
+
         const totalHorizontalPadding = paddingLeft + paddingRight + borderLeft + borderRight;
         const totalVerticalPadding = paddingTop + paddingBottom + borderTop + borderBottom;
-        
+
         const minWidth = Math.max(
           width, // Use actual content width
           Math.min(totalTrackedItems * 40 + totalHorizontalPadding, 800), // Estimate based on content + padding
           50 // Absolute minimum
         );
-        
+
         // Significantly improve height calculation to ensure all images are visible
         // Get actual row count based on the layout in rotation-preview component
         const rowCount = Math.ceil(totalTrackedItems / abilitiesPerRow);
-        
+
         // Get the actual rows from the DOM if possible for more accurate measurement
         const rowElements = overlay.querySelectorAll('.rotation-preview-row');
-        
+
         // Determine the scaled row height based on UI scale
         // At lower UI scales, we need relatively more pixels per row
         const baseRowHeight = 60; // Increased base height per row
         const scaleFactor = Math.max(2.0, 100 / Math.max(uiScale, 10)); // Inverse scale factor, with minimum
         const scaledRowHeight = baseRowHeight * scaleFactor;
-        
+
         let totalRowHeight = 0;
-        
+
         // Calculate total height by measuring actual row elements if available
         if (rowElements && rowElements.length > 0) {
           // Count the total number of ability images to handle more complex layouts
@@ -688,15 +713,15 @@ export class App implements AfterViewInit {
             const rowElement = rowElements[i] as HTMLElement;
             const imagesInRow = rowElement.querySelectorAll('.ability-image').length;
             totalImages += imagesInRow;
-            
+
             // Get the measured height or use our scaled calculation
             const measuredHeight = Math.max(rowElement.offsetHeight, rowElement.scrollHeight);
             totalRowHeight += measuredHeight > 0 ? measuredHeight : scaledRowHeight;
           }
-          
+
           // Add extra buffer for each row and scale it properly
           totalRowHeight += rowElements.length * 20 * scaleFactor;
-          
+
           // Apply additional scaling for large numbers of images
           if (totalImages > 50) {
             totalRowHeight *= 1.2; // Add 20% more height for very large rotations
@@ -705,7 +730,7 @@ export class App implements AfterViewInit {
           // Fallback calculation with generous spacing
           totalRowHeight = rowCount * scaledRowHeight;
         }
-        
+
         // Ensure we never go below the measured height, apply UI scaling and add extra bottom padding
         // The scaling divisor compensates for the pixelRatio in the toCanvas function
         const calculatedHeight = Math.max(
@@ -759,7 +784,7 @@ export class App implements AfterViewInit {
     // Start the first update
     requestAnimationFrame(updateOverlay);
   }
-  
+
   private showRotationNameOverlay(override: string | null = null) {
     const selectedRotation = this.selectedRotationSet.Data[this.selectedIndex];
     if (!selectedRotation || !selectedRotation.Name) {
@@ -768,7 +793,7 @@ export class App implements AfterViewInit {
 
     const overlayPosition = this.getSettingValue('overlayPosition') || { x: 100, y: 100 };
     const rotationName = override ?? selectedRotation.Name;
-    
+
     // Create a canvas for the label
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -822,6 +847,7 @@ export class App implements AfterViewInit {
 
   onSelectedRotationSetChange(rotationSet: RotationSet) {
     this.selectedRotationSet = rotationSet;
+    this.resetAbilityProgress();
     const spacing = normalizeLineBreakSpacing(rotationSet.lineBreakSpacing);
     const setting = this.settings.find(s => s.name === 'lineBreakSpacing');
     if (setting && setting.value !== spacing) {
@@ -833,6 +859,7 @@ export class App implements AfterViewInit {
 
   onChangeSelectedRotation(rotationId: number) {
     this.selectedIndex = rotationId;
+    this.resetAbilityProgress();
     this.markOverlayDirty();
     this.showRotationNameOverlay();
   }
