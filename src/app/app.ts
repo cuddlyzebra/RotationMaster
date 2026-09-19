@@ -44,6 +44,11 @@ export class App implements AfterViewInit {
   // Ability-progress tracking (grey-out-on-use feature)
   currentAbilityIndex: number = -1;
 
+  // Manual-restart handling: after a manual restart, ignore auto phase/wave
+  // detection for a short window so a stale banner still fading from screen
+  // can't immediately snap the rotation back to where it was.
+  private suppressAutoPhaseSwitchUntil = 0;
+
   // Settings related properties
   settings: SettingConfig[] = [];
   elementCache: Record<string, HTMLElement | null> = {};
@@ -233,12 +238,34 @@ export class App implements AfterViewInit {
     return element;
   }
 
+  // Single Alt+1 press still cycles rotations, same as before. A second
+  // press within DOUBLE_PRESS_WINDOW_MS is treated as a double-tap and
+  // restarts the rotation instead -- this reuses the one hotkey Alt1
+  // actually gives an app (rather than assuming a second, independent
+  // global hotkey is registrable), so a single press is delayed slightly
+  // to see whether a second one follows before committing to "cycle".
+  private alt1PressTimeout: any = null;
+  private readonly DOUBLE_PRESS_WINDOW_MS = 350;
+
   alt1pressed(ev: any): void {
     if (this.updatingOverlayPosition) {
       this.stopUpdatingOverlayPosition();
-    } else {
-      this.cycleRotationSet();
+      return;
     }
+
+    if (this.alt1PressTimeout) {
+      // a second press arrived in time -> treat as double-press
+      clearTimeout(this.alt1PressTimeout);
+      this.alt1PressTimeout = null;
+      this.restartRotation();
+      return;
+    }
+
+    // wait briefly to see if a second press follows before cycling
+    this.alt1PressTimeout = setTimeout(() => {
+      this.alt1PressTimeout = null;
+      this.cycleRotationSet();
+    }, this.DOUBLE_PRESS_WINDOW_MS);
   }
 
   exitPreviewMode(): void {
@@ -251,6 +278,8 @@ export class App implements AfterViewInit {
 
     this.selectedIndex = (this.selectedIndex + 1) % numRots; // Cycle through rotations
     this.resetAbilityProgress();
+    this.currentWave = null;
+    this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // give a manual cycle the same grace window as a manual restart, so it isn't instantly overridden by the still-visible banner
 
     //update selected value of radiobuttons in ui
     const rotationRadios = document.querySelectorAll('input[name="rotationSelector"]');
@@ -261,6 +290,25 @@ export class App implements AfterViewInit {
     this.markOverlayDirty();
     this.showRotationNameOverlay();
 
+  }
+
+  // Manually reset back to the first rotation (index 0). Also clears the
+  // last-detected phase/wave and briefly suppresses auto phase-switching,
+  // so a stale "Phase: X" banner still fading from screen after a
+  // teleport-out can't immediately snap the rotation back to where it was.
+  restartRotation(): void {
+    this.selectedIndex = 0;
+    this.resetAbilityProgress();
+    this.currentWave = null;
+    this.suppressAutoPhaseSwitchUntil = Date.now() + 5000;
+
+    const rotationRadios = document.querySelectorAll('input[name="rotationSelector"]');
+    rotationRadios.forEach((radio, index) => {
+      (radio as HTMLInputElement).checked = index === this.selectedIndex;
+    });
+
+    this.markOverlayDirty();
+    this.showRotationNameOverlay('Restarted');
   }
 
   // --- Ability-progress tracking (grey-out-on-use feature) ---
@@ -548,6 +596,7 @@ export class App implements AfterViewInit {
       // }
 
       if (this.currentWave !== null &&
+        Date.now() >= this.suppressAutoPhaseSwitchUntil &&
         this.selectedRotationSet.Data.some(rs => rs.Wave == this.currentWave) &&
         this.selectedRotationSet.Data[this.selectedIndex]?.Wave != this.currentWave) {
           this.selectedIndex = this.selectedRotationSet.Data.findIndex(rs => rs.Wave == this.currentWave);
@@ -890,6 +939,8 @@ export class App implements AfterViewInit {
   onChangeSelectedRotation(rotationId: number) {
     this.selectedIndex = rotationId;
     this.resetAbilityProgress();
+    this.currentWave = null;
+    this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // same grace window as cycleRotationSet/restartRotation, so a manual pick via the UI isn't instantly overridden either
     this.markOverlayDirty();
     this.showRotationNameOverlay();
   }
@@ -897,39 +948,40 @@ export class App implements AfterViewInit {
   getBossHealth(): number {
     return 100;
   }
-// --- Debug: export the FULL captureHoldFullRs() capture, the same call findWave() uses ---
-async captureFullRsDebug(): Promise<void> {
-  if (!this.hasAlt1()) {
-    console.log('captureFullRsDebug: Alt1 not detected');
-    return;
+
+  // --- Debug: export the FULL captureHoldFullRs() capture, the same call findWave() uses ---
+  async captureFullRsDebug(): Promise<void> {
+    if (!this.hasAlt1()) {
+      console.log('captureFullRsDebug: Alt1 not detected');
+      return;
+    }
+
+    const img = a1base.captureHoldFullRs();
+    const w = (img as any).width ?? alt1.rsWidth;
+    const h = (img as any).height ?? alt1.rsHeight;
+
+    console.log('captureFullRsDebug: capturing', w, 'x', h);
+
+    const imgData = img.toData(0, 0, w, h);
+
+    const canvas = this.document.createElement('canvas');
+    canvas.width = imgData.width;
+    canvas.height = imgData.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.log('captureFullRsDebug: could not get canvas context');
+      return;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = this.document.createElement('a');
+    link.href = dataUrl;
+    link.download = `alt1-fullrs-${Date.now()}.png`;
+    link.click();
+
+    console.log('captureFullRsDebug: download triggered');
   }
-
-  const img = a1base.captureHoldFullRs();
-  const w = (img as any).width ?? alt1.rsWidth;
-  const h = (img as any).height ?? alt1.rsHeight;
-
-  console.log('captureFullRsDebug: capturing', w, 'x', h);
-
-  const imgData = img.toData(0, 0, w, h);
-
-  const canvas = this.document.createElement('canvas');
-  canvas.width = imgData.width;
-  canvas.height = imgData.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    console.log('captureFullRsDebug: could not get canvas context');
-    return;
-  }
-  ctx.putImageData(imgData, 0, 0);
-
-  const dataUrl = canvas.toDataURL('image/png');
-  const link = this.document.createElement('a');
-  link.href = dataUrl;
-  link.download = `alt1-fullrs-${Date.now()}.png`;
-  link.click();
-
-  console.log('captureFullRsDebug: download triggered');
-}
 
 
   // --- Debug: capture a region centered on the mouse cursor, for building new templates ---

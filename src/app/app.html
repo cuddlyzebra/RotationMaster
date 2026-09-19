@@ -39,6 +39,15 @@
       (rotationSetChange)="onSelectedRotationSetChange($event)"
     ></rm-rotation-set>
 
+    <!-- Restart Rotation Button -->
+    <button
+      class="nisbutton"
+      (click)="restartRotation()"
+      title="Reset to the first rotation (or double-tap Alt+1 in-game)"
+    >
+      Restart Rotation
+    </button>
+
     <!-- Everything below hidden in preview mode -->
     @if (!getSettingValue('previewOnly')) {
       <hr style="margin: 20px 0; border: 1px solid #ccc" />
