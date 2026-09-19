@@ -572,7 +572,7 @@ export class App implements AfterViewInit {
 
     const updateOverlay = async () => {
       const now = Date.now();
-      if (now - this.lastWaveCheck >= 250) {
+      if (now - this.lastWaveCheck >= 500) {
         this.lastWaveCheck = now;
         let wavePos = this.findWave();
         if (wavePos) {
