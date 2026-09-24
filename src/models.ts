@@ -58,12 +58,22 @@ export class BoolSettingConfig extends SettingConfig {
     }
 }
 
+export class ColorSettingConfig extends SettingConfig {
+    label: string;
+
+    constructor(name: string, label: string, value?: string, hidden: boolean = false, description?: string, classes?: string[]) {
+        super(name, SettingTypeEnum.Color, value ?? '#ffcb05', hidden, description, classes);
+        this.label = label;
+    }
+}
+
 export enum SettingTypeEnum {
     Text = 'text',
     Number = 'number',
     Boolean = 'boolean',
     Range = 'range',
-    Grid = 'grid'
+    Grid = 'grid',
+    Color = 'color'
 }
 
 export class RotationSet {

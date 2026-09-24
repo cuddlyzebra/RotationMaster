@@ -1,0 +1,92 @@
+.flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.center-aligned {
+    align-items: center;
+}
+
+h3 {
+    color: #ffcb05;
+    text-shadow: 1px 1px #000000;
+}
+
+label,
+output {
+    font-family: sans-serif;
+    font-size: 14px;
+    color: #94afbd;
+    text-shadow: 1px 1px #000000;
+}
+
+.setting {
+    .color-picker-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+
+        label.full {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        output {
+            min-width: 65px;
+            text-transform: uppercase;
+        }
+    }
+}
+
+.color-picker-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+
+    label.full {
+        flex: 1;
+        margin-bottom: 0;
+    }
+
+    output {
+        min-width: 65px;
+        text-transform: uppercase;
+    }
+}
+
+.color-swatch {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 40px;
+    height: 30px;
+    border: 2px solid #4e443c;
+    border-radius: 6px;
+    padding: 0;
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+
+    &::-webkit-color-swatch {
+        border: none;
+        border-radius: 4px;
+    }
+
+    &::-moz-color-swatch {
+        border: none;
+        border-radius: 4px;
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 1px #ffcb05;
+    }
+}

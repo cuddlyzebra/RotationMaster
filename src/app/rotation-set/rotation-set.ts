@@ -15,6 +15,8 @@ import { FormsModule } from '@angular/forms';
 export class RotationSetComponent implements OnDestroy, OnChanges {
   @Input() abilitiesPerRow: number = 10;
   @Input() lineBreakSpacing: number = 0;
+  @Input() headingFontSize: number = 15;
+  @Input() headingColor: string = '#ffcb05';
   @Input() selectedRotationIndex: number = 0;
   @Input() previewOnly: boolean = false;
   @Input() currentAbilityIndex: number = -1;
@@ -434,7 +436,12 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
       }
 
       return new AbilitySelection(
-        selection.seperator || selection.Separator || '→',
+        // Separator can legitimately be "" (no arrow -- paired with the previous
+        // icon, e.g. a weapon swap immediately followed by its spec). `||` would
+        // treat that empty string as falsy and silently replace it with the '→'
+        // default, discarding it on every import. Only fall back to '→' when the
+        // field is genuinely absent (undefined/null), via ??.
+        selection.seperator ?? selection.Separator ?? '→',
         ability,
         selection.notes || selection.Notes || null,
         selection.id || selection.Id || null

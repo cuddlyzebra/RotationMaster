@@ -7,7 +7,7 @@
       <div
         class="rotation-preview-row"
         [class.from-line-break]="row.fromLineBreak"
-        [style.margin-top]="row.fromLineBreak ? lineBreakExtraGap : null"
+        [style.margin-top]="row.fromLineBreak ? lineBreakGap(row.lineBreakCount) : null"
         >
         @for (item of row.selections; track trackByAbilitySelection($index, item); let first = $first) {
           @if (item.selection.SelectedAbility) {
@@ -17,6 +17,7 @@
             <span
               class="ability-image-container"
               [class.ability-blank-slot]="isBlankSpacer(item.selection.SelectedAbility)"
+              [class.ability-heading-slot]="isHeadingNote(item.selection.Notes)"
               [class.ability-used]="item.abilityIndex >= 0 && item.abilityIndex <= currentAbilityIndex"
               [class.ability-duplicate]="!!getDuplicateColor(item)"
               [style.--duplicate-color]="getDuplicateColor(item)">
@@ -32,9 +33,19 @@
                   />
               }
               @if (item.selection.Notes) {
-                <p class="ability-note">
-                  {{ item.selection.Notes }}
-                </p>
+                @if (isHeadingNote(item.selection.Notes)) {
+                  <p
+                    class="ability-note ability-note-heading"
+                    [style.font-size.px]="headingFontSize"
+                    [style.color]="headingColor"
+                    >
+                    {{ headingText(item.selection.Notes) }}
+                  </p>
+                } @else {
+                  <p class="ability-note">
+                    {{ item.selection.Notes }}
+                  </p>
+                }
               }
             </span>
           }

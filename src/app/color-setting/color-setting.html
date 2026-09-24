@@ -1,0 +1,20 @@
+<div class="flex setting center-aligned" id="color-container">
+    <h3>{{ setting.label }}</h3>
+    <div class="color-picker-container">
+        <label class="full" [for]="setting.name">{{ setting.description }}</label>
+        <input
+            type="color"
+            class="color-swatch"
+            [id]="setting.name"
+            [value]="setting.value"
+            (input)="valueChanged($event)"
+            (change)="valueChanged($event)"
+        />
+        <output
+            id="{{setting.name}}Output"
+            [for]="setting.name"
+        >
+            {{ setting.value }}
+        </output>
+    </div>
+</div>

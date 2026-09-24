@@ -24,6 +24,8 @@ export class RotationContainerComponent implements OnDestroy {
   @Input() showDetails: boolean = true;
   @Input() abilitiesPerRow: number = 10;
   @Input() lineBreakSpacing: number = 0;
+  @Input() headingFontSize: number = 15;
+  @Input() headingColor: string = '#ffcb05';
   @Input() currentAbilityIndex: number = -1;
 
   @Output() rotationChange = new EventEmitter<Rotation>();

@@ -11,7 +11,17 @@ interface IndexedSelection {
 interface PreviewRow {
   selections: IndexedSelection[];
   fromLineBreak: boolean;
+  // How many '↵' characters triggered this row (1 = normal break). A note author
+  // can write '↵↵' etc. to ask for extra space before just this one row, without
+  // changing the global Line Break Spacing setting that every other break shares.
+  lineBreakCount: number;
 }
+
+// Notes are tiny captions by default (see .ability-note), sized for a quick
+// per-ability callout. A note that starts with "## " instead renders as a
+// bold section heading (see .ability-note-heading) -- e.g. for labelling two
+// halves of a time-gated phase that are shown in the same preview.
+const HEADING_PREFIX = '## ';
 
 const DUPLICATE_COLOR_PALETTE: string[] = [
   '#ff5555', '#55ff99', '#55aaff', '#ffcc33',
@@ -28,6 +38,8 @@ export class RotationPreview implements OnChanges {
   @Input() AbilitySelections: AbilitySelection[] = [];
   @Input() abilitiesPerRow: number = 10;
   @Input() lineBreakSpacing: number = 0;
+  @Input() headingFontSize: number = 15;
+  @Input() headingColor: string = '#ffcb05';
   @Input() index: number = 0;
   @Input() revision: number = 0;
   /** How many real abilities have been "used" so far in this rotation. -1 = none used yet. */
@@ -37,9 +49,18 @@ export class RotationPreview implements OnChanges {
   hasPreview = false;
   private duplicateColors = new Map<number, string>();
 
-  get lineBreakExtraGap(): string {
+  lineBreakGap(count: number): string {
     const t = Math.min(100, Math.max(0, Number(this.lineBreakSpacing) || 0)) / 100;
-    return `calc((2rem - 8px) * ${t})`;
+    const multiplier = Math.max(1, count || 1);
+    return `calc((2rem - 8px) * ${t} * ${multiplier})`;
+  }
+
+  isHeadingNote(notes: string | null): boolean {
+    return !!notes && notes.startsWith(HEADING_PREFIX);
+  }
+
+  headingText(notes: string): string {
+    return notes.slice(HEADING_PREFIX.length);
   }
 
   ngOnChanges(_changes: SimpleChanges): void {
@@ -93,7 +114,7 @@ export class RotationPreview implements OnChanges {
   }
 
   private calculateAbilityRows(): PreviewRow[] {
-    const abilityRows: PreviewRow[] = [{ selections: [], fromLineBreak: false }];
+    const abilityRows: PreviewRow[] = [{ selections: [], fromLineBreak: false, lineBreakCount: 0 }];
     let currentRow = 0;
     let itemsInCurrentRow = 0;
     let abilityIndex = 0;
@@ -113,12 +134,14 @@ export class RotationPreview implements OnChanges {
       const selection = this.AbilitySelections[i];
 
       if (selection.Separator?.includes('↵')) {
+        const breakCount = (selection.Separator.match(/↵/g) || []).length;
         if (itemsInCurrentRow > 0) {
-          abilityRows.push({ selections: [], fromLineBreak: true });
+          abilityRows.push({ selections: [], fromLineBreak: true, lineBreakCount: breakCount });
           currentRow++;
           itemsInCurrentRow = 0;
         } else {
           abilityRows[currentRow].fromLineBreak = currentRow > 0;
+          abilityRows[currentRow].lineBreakCount = currentRow > 0 ? breakCount : 0;
         }
         const displaySelection = { ...selection };
         displaySelection.Separator = '';
@@ -126,7 +149,7 @@ export class RotationPreview implements OnChanges {
         itemsInCurrentRow++;
       }
       else if (itemsInCurrentRow >= this.abilitiesPerRow && itemsInCurrentRow > 0) {
-        abilityRows.push({ selections: [], fromLineBreak: false });
+        abilityRows.push({ selections: [], fromLineBreak: false, lineBreakCount: 0 });
         currentRow++;
         itemsInCurrentRow = 0;
         pushSelection(selection, i);

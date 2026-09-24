@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, DOCUMENT, Inject, signal } from '@angular/core';
-import { BoolSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
+import { BoolSettingConfig, ColorSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
 import { blankSettings } from '../assets/blankSettings';
 import patchnotes from '../patchnotes.json';
 import { PatchNotesComponent } from './patch-notes/patch-notes';
@@ -57,6 +57,7 @@ export class App implements AfterViewInit {
   // Settings signals
   protected readonly rangeSettings = signal<RangeSettingConfig[]>([]);
   protected readonly boolSettings = signal<BoolSettingConfig[]>([]);
+  protected readonly colorSettings = signal<ColorSettingConfig[]>([]);
 
   //get a specific setting value
   getSettingValue(name: string): any {
@@ -105,12 +106,14 @@ export class App implements AfterViewInit {
     const kilnWaveImg = this.loadImage('assets/kiln_wave.data.png');
     const phaseImg = this.loadImage('assets/phase.data.png');
     const healthImg = this.loadImage('assets/boss_health.data.png');
+    const zeroHpImg = this.loadImage('assets/zero_hp.data.png');
 
     this.imgs = a1lib.ImageDetect.webpackImages({
       "wave": waveImg,
       "kiln_wave": kilnWaveImg,
       "phase": phaseImg,
-      "health": healthImg
+      "health": healthImg,
+      "zero_hp": zeroHpImg
     });
   }
 
@@ -142,13 +145,16 @@ export class App implements AfterViewInit {
 
       // Update signals if needed
       if (settingToUpdate.type === SettingTypeEnum.Range) {
-        this.rangeSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Range) as RangeSettingConfig[]);
+        this.rangeSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Range && !s.hidden) as RangeSettingConfig[]);
       } else if (settingToUpdate.type === SettingTypeEnum.Boolean) {
-        this.boolSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Boolean) as BoolSettingConfig[]);
+        this.boolSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Boolean && !s.hidden) as BoolSettingConfig[]);
+      } else if (settingToUpdate.type === SettingTypeEnum.Color) {
+        this.colorSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Color && !s.hidden) as ColorSettingConfig[]);
       }
     }
 
-    if (settingName === 'uiScale' || settingName === 'abilitiesPerRow' || settingName === 'lineBreakSpacing') {
+    if (settingName === 'uiScale' || settingName === 'abilitiesPerRow' || settingName === 'lineBreakSpacing'
+      || settingName === 'headingFontSize' || settingName === 'headingColor') {
       this.markOverlayDirty();
     }
 
@@ -207,9 +213,12 @@ export class App implements AfterViewInit {
         abilitiesPerRow: 10,
         lineBreakSpacing: 0,
         uiScale: 100,
+        headingFontSize: 15,
+        headingColor: '#ffcb05',
         updatingOverlayPosition: false,
         lastKnownVersion: '0.0.1',
-        previewOnly: false
+        previewOnly: false,
+        hpZeroPhaseAdvance: false
       }));
     }
     else {
@@ -219,9 +228,10 @@ export class App implements AfterViewInit {
       });
     }
 
-    // Initialize range and bool settings signals
+    // Initialize range, bool and color settings signals
     this.rangeSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Range && !s.hidden) as RangeSettingConfig[]);
     this.boolSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Boolean && !s.hidden) as BoolSettingConfig[]);
+    this.colorSettings.set(this.settings.filter(s => s.type === SettingTypeEnum.Color && !s.hidden) as ColorSettingConfig[]);
   }
 
   public getById(id: string): HTMLElement | null {
@@ -279,6 +289,7 @@ export class App implements AfterViewInit {
     this.selectedIndex = (this.selectedIndex + 1) % numRots; // Cycle through rotations
     this.resetAbilityProgress();
     this.currentWave = null;
+    this.hpZeroActive = false;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // give a manual cycle the same grace window as a manual restart, so it isn't instantly overridden by the still-visible banner
 
     //update selected value of radiobuttons in ui
@@ -300,6 +311,7 @@ export class App implements AfterViewInit {
     this.selectedIndex = 0;
     this.resetAbilityProgress();
     this.currentWave = null;
+    this.hpZeroActive = false;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000;
 
     const rotationRadios = document.querySelectorAll('input[name="rotationSelector"]');
@@ -419,6 +431,17 @@ export class App implements AfterViewInit {
 
     console.log("No wave found");
     return null;
+  }
+
+  // Detects the "0" glyph the game renders as the target's HP% once it hits
+  // zero -- same technique VoragoTag uses to time Vorago's target-cycle
+  // window. Unlike findWave()/readImageNum(), this needs no OCR: it's a
+  // straight template match for that single glyph, wherever it appears on
+  // screen, so it stays reliable for bosses (Vorago) that show no on-screen
+  // Phase/Wave banner for findWave() to key off.
+  private findZeroHp(): boolean {
+    let img = a1base.captureHoldFullRs();
+    return img.findSubimage(this.imgs['zero_hp']).length > 0;
   }
 
   private waveCountFont: ocr.FontDefinition | null = null;
@@ -545,6 +568,14 @@ export class App implements AfterViewInit {
   private currentBossHealth: number | null = null;
   private currentWave: number | null = null;
 
+  // HP-zero-based phase advance (Vorago-style, see findZeroHp()). Checked on
+  // its own faster cadence -- the 0% glyph is only ever on screen briefly --
+  // and edge-triggered off hpZeroActive so a single dip to 0% advances once,
+  // not once per poll for as long as the glyph stays visible.
+  private lastHpZeroCheck = 0;
+  private hpZeroActive = false;
+  private readonly HP_ZERO_CHECK_INTERVAL_MS = 200;
+
   startOverlay() {
     if (!this.hasAlt1()) {
       return;
@@ -594,6 +625,34 @@ export class App implements AfterViewInit {
       //       console.log("Boss health: " + bossHealth);
       //   }
       // }
+
+      if (this.getSettingValue('hpZeroPhaseAdvance') &&
+        now - this.lastHpZeroCheck >= this.HP_ZERO_CHECK_INTERVAL_MS) {
+        this.lastHpZeroCheck = now;
+        const isZeroHp = this.findZeroHp();
+
+        if (isZeroHp && !this.hpZeroActive) {
+          this.hpZeroActive = true;
+
+          if (Date.now() >= this.suppressAutoPhaseSwitchUntil) {
+            const numRots = this.selectedRotationSet?.Data.length || 0;
+            // Don't wrap: the same 0% glyph also fires on the actual kill,
+            // and looping back to rotation 0 there would be wrong, not helpful.
+            if (this.selectedIndex + 1 < numRots) {
+              this.selectedIndex++;
+              this.resetAbilityProgress();
+              this.currentWave = null;
+              // Same grace window as a manual cycle/restart, so the still-visible
+              // 0% glyph from this same trigger can't immediately fire again.
+              this.suppressAutoPhaseSwitchUntil = Date.now() + 3000;
+              this.markOverlayDirty();
+              this.showRotationNameOverlay();
+            }
+          }
+        } else if (!isZeroHp) {
+          this.hpZeroActive = false;
+        }
+      }
 
       if (this.currentWave !== null &&
         Date.now() >= this.suppressAutoPhaseSwitchUntil &&
@@ -940,6 +999,7 @@ export class App implements AfterViewInit {
     this.selectedIndex = rotationId;
     this.resetAbilityProgress();
     this.currentWave = null;
+    this.hpZeroActive = false;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // same grace window as cycleRotationSet/restartRotation, so a manual pick via the UI isn't instantly overridden either
     this.markOverlayDirty();
     this.showRotationNameOverlay();

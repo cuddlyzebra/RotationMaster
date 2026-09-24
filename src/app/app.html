@@ -32,6 +32,8 @@
     <rm-rotation-set
       [abilitiesPerRow]="getSettingValue('abilitiesPerRow')"
       [lineBreakSpacing]="getSettingValue('lineBreakSpacing')"
+      [headingFontSize]="getSettingValue('headingFontSize')"
+      [headingColor]="getSettingValue('headingColor')"
       [selectedRotationIndex]="selectedIndex"
       [previewOnly]="getSettingValue('previewOnly')"
       [currentAbilityIndex]="currentAbilityIndex"
@@ -57,6 +59,7 @@
         [version]="version()"
         [rangeSettings]="rangeSettings()"
         [boolSettings]="boolSettings()"
+        [colorSettings]="colorSettings()"
         (updateSetting)="onUpdateSetting($event)"
         (setOverlayPosition)="updateOverlayPosition()"
       ></rm-settings>

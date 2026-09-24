@@ -17,12 +17,22 @@
   }
   
   <!-- Boolean Settings -->
-  <!-- @for (setting of boolSettings; track setting) {
+  @for (setting of boolSettings; track setting) {
     <div class="setting">
       <rm-bool-setting
         [setting]="setting"
         (onUpdate)="updateSetting.emit({ name: setting.name, value: $event })"
       ></rm-bool-setting>
     </div>
-  } -->
+  }
+
+  <!-- Color Settings -->
+  @for (setting of colorSettings; track setting) {
+    <div class="setting">
+      <rm-color-setting
+        [setting]="setting"
+        (onUpdate)="updateSetting.emit({ name: setting.name, value: $event })"
+      ></rm-color-setting>
+    </div>
+  }
 </div>
