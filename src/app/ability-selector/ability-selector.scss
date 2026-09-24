@@ -13,11 +13,13 @@
 }
 
 .separator-slot {
-  flex: 0 0 64px;
-  width: 64px;
-  min-width: 64px;
-  max-width: 64px;
-  overflow: hidden;
+  flex: 0 0 72px;
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .separator-selector {
@@ -30,6 +32,71 @@
   padding: 0 !important;
 
   &>option{background:#1D190D;}
+}
+
+// Toggles a row's Separator between a normal connector ("→", "tc", ...) and a
+// line-break ("↵", repeated for extra gap) -- previously this required typing
+// the ↵ character directly into the Separator field or picking one of a fixed
+// set of "↵ X" combo options from the dropdown.
+.row-break-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #94afbd;
+  text-shadow: 1px 1px #000000;
+  white-space: nowrap;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin: 0;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+}
+
+.row-break-gap-input {
+  width: 64px !important;
+  min-width: 0 !important;
+  max-width: 64px !important;
+  flex: none !important;
+  box-sizing: border-box;
+  padding: 0 2px !important;
+  text-align: center;
+}
+
+.notes-with-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 100px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+// Checked whenever the Notes field starts with "## " -- toggling this adds
+// or removes that prefix automatically, so the section-heading feature
+// (see rotation-preview) doesn't require typing "## " by hand.
+.heading-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #94afbd;
+  text-shadow: 1px 1px #000000;
+  white-space: nowrap;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin: 0;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
 }
 
 .ability-image-container
@@ -59,6 +126,13 @@
   min-width: 100px !important;
   max-width: 100px !important;
   padding: 0 !important;
+
+  // Highlight the field while it's set to render as a heading, so it's
+  // obvious at a glance which rows will show up as section headings.
+  &.heading-input {
+    border-color: #ffcb05 !important;
+    color: #ffcb05 !important;
+  }
 }
 
 rm-search-dropdown {

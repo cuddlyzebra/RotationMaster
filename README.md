@@ -14,10 +14,10 @@ This is a fork of [RotationMaster](https://github.com/Ellamental2/RotationMaster
 
 - **HP-zero-based phase auto-advance** — for bosses with no on-screen phase/wave banner (Vorago being the motivating case), the app can instead watch the boss's HP% for the moment it template-matches a "0" and auto-advance to the next rotation from there, the same idea used by [VoragoTag](https://github.com/cuddlyzebra/VoragoTag). Off by default — turn on **"Auto-advance on Boss HP 0% (no phase banner)"** in Settings for fights that need it, and leave it off for anything already handled by normal Phase/Wave detection.
 
-- **Section headings and custom spacing inside a rotation preview** — a rotation can now be broken into labelled sections without needing separate selectable rotations for each one:
-  - Give any ability selection's **Notes** field a value starting with `## ` (e.g. `## Phase 2a`) and it renders as a bold, coloured heading instead of a small caption — handy for showing two time-gated halves of one phase (say, "Phase 2" and "Phase 2a") in a single overlay, one under the other.
-  - Repeating the line-break separator (`↵`) in an ability's **Separator** field — e.g. `↵↵` for double, `↵↵↵` for triple — gives that specific row extra vertical gap above it, independent of the global "Line Break Spacing" setting. Use this to put a bit more air above a new heading than between ordinary rows.
-  - Heading appearance is customizable from Settings: **"Heading Text Size"** (a slider, 10–40px) and **"Heading Text Color"** (a colour picker) apply to every `## ` heading in the overlay.
+- **Section headings and custom spacing inside a rotation preview** — a rotation can now be broken into labelled sections without needing separate selectable rotations for each one, all from the rotation designer itself (no JSON editing required):
+  - Every ability row's Notes box now has a **"Heading"** checkbox next to it. Tick it and the text you type renders as a bold, coloured heading instead of a small caption — handy for showing two time-gated halves of one phase (say, "Phase 2" and "Phase 2a") in a single overlay, one under the other. (Under the hood this just prefixes the Notes value with `## `, so a heading saved from an older hand-edited JSON is picked up and shown ticked automatically.)
+  - Every row also has a **"Row break"** checkbox, which starts a new row in the preview at that ability. Once ticked, a small number field appears next to it (1–5) for extra vertical gap before that specific row, independent of the global "Line Break Spacing" setting — useful for putting a bit more air above a new heading than between ordinary rows. (This is the `↵`/`↵↵` separator from before, now exposed as a checkbox + number instead of needing to be typed in.)
+  - Heading appearance is customizable from Settings: **"Heading Text Size"** (a slider, 10–40px) and **"Heading Text Color"** (a colour picker) apply to every heading in the overlay.
 
 ### Example
 

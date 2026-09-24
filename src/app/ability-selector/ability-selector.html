@@ -1,16 +1,42 @@
 <div class="dropdown-container">
   <div class="separator-slot">
-    <select
-      class="nisinput separator-selector"
-      [(ngModel)]="abilitySelection.Separator"
-      (ngModelChange)="onSeparatorChange($event)"
-      [disabled]="isFirst"
+    <label
+      class="row-break-toggle"
+      title="Start a new row in the preview here"
       [style.visibility]="isFirst ? 'hidden' : 'visible'"
       >
-      @for (sep of separators; track sep) {
-        <option [value]="sep">{{ sep || '(none)' }}</option>
-      }
-    </select>
+      <input
+        type="checkbox"
+        [ngModel]="isRowBreak"
+        (ngModelChange)="onRowBreakToggle($event)"
+        [disabled]="isFirst"
+        />
+      ↵ Row break
+    </label>
+
+    @if (isRowBreak) {
+      <input
+        type="number"
+        class="nisinput row-break-gap-input"
+        [min]="1"
+        [max]="5"
+        [ngModel]="rowBreakGap"
+        (ngModelChange)="onRowBreakGapChange($event)"
+        title="Extra vertical gap before this row (1 = normal gap, higher = more space)"
+        />
+    } @else {
+      <select
+        class="nisinput separator-selector"
+        [(ngModel)]="abilitySelection.Separator"
+        (ngModelChange)="onSeparatorChange($event)"
+        [disabled]="isFirst"
+        [style.visibility]="isFirst ? 'hidden' : 'visible'"
+        >
+        @for (sep of separators; track sep) {
+          <option [value]="sep">{{ sep || '(none)' }}</option>
+        }
+      </select>
+    }
   </div>
 
   <rm-search-dropdown
@@ -29,12 +55,24 @@
     }
   </div>
 
-  <input
-    type="text"
-    class="nisinput ability-notes-input"
-    [(ngModel)]="abilitySelection.Notes"
-    (ngModelChange)="onNotesChange($event)"
-    />
+  <div class="notes-with-heading">
+    <input
+      type="text"
+      class="nisinput ability-notes-input"
+      [class.heading-input]="isHeading"
+      [ngModel]="notesText"
+      (ngModelChange)="onNotesTextChange($event)"
+      [placeholder]="isHeading ? 'Heading text' : 'Notes'"
+      />
+    <label class="heading-toggle" title="Render this note as a bold section heading (e.g. Phase 2) instead of a small caption">
+      <input
+        type="checkbox"
+        [ngModel]="isHeading"
+        (ngModelChange)="onHeadingToggle($event)"
+        />
+      Heading
+    </label>
+  </div>
 
   <div class="button-dropdown">
     <button
