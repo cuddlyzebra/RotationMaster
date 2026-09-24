@@ -641,6 +641,14 @@ export class App implements AfterViewInit {
   private lastHpZeroCheck = 0;
   private hpZeroActive = false;
   private readonly HP_ZERO_CHECK_INTERVAL_MS = 200;
+  // The last time isZeroHp actually matched. hpZeroActive is only cleared
+  // after a real gap since this -- a single missed frame (camera change,
+  // animation, template-match flicker) while the 0% state is genuinely
+  // still showing shouldn't be treated as "HP is no longer 0%", because
+  // that would immediately re-arm a second delayed advance for the exact
+  // same drop (the double phase-switch this guards against).
+  private hpZeroLastSeenAt = 0;
+  private readonly HP_ZERO_CLEAR_DEBOUNCE_MS = 1000;
 
   // The rotation switch itself is delayed from the HP-0% detection by the
   // "Phase Advance Delay" setting (default 12s) -- players are still using
@@ -710,17 +718,21 @@ export class App implements AfterViewInit {
         this.lastHpZeroCheck = now;
         const isZeroHp = this.findZeroHp();
 
-        if (isZeroHp && !this.hpZeroActive) {
-          this.hpZeroActive = true;
+        if (isZeroHp) {
+          this.hpZeroLastSeenAt = now;
 
-          // Don't schedule a switch if one is already pending (shouldn't
-          // normally happen given hpZeroActive gates re-triggering, but
-          // guards against re-arming the delay on a flicker).
-          if (this.hpZeroAdvancePendingAt === null) {
-            const delaySeconds = this.getSettingValue('hpZeroPhaseAdvanceDelay') ?? 12;
-            this.hpZeroAdvancePendingAt = Date.now() + (delaySeconds * 1000);
+          if (!this.hpZeroActive) {
+            this.hpZeroActive = true;
+
+            // Don't schedule a switch if one is already pending (shouldn't
+            // normally happen given hpZeroActive gates re-triggering, but
+            // guards against re-arming the delay on a flicker).
+            if (this.hpZeroAdvancePendingAt === null) {
+              const delaySeconds = this.getSettingValue('hpZeroPhaseAdvanceDelay') ?? 12;
+              this.hpZeroAdvancePendingAt = Date.now() + (delaySeconds * 1000);
+            }
           }
-        } else if (!isZeroHp) {
+        } else if (this.hpZeroActive && now - this.hpZeroLastSeenAt >= this.HP_ZERO_CLEAR_DEBOUNCE_MS) {
           this.hpZeroActive = false;
         }
       }
