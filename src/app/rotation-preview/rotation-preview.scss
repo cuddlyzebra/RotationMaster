@@ -82,7 +82,13 @@
                     font-weight: bold;
                     padding: 0;
                     margin: 0;
-                    text-align: left;
+                    // Centered rather than left-aligned: when a heading is
+                    // attached to a real ability icon (not a blank spacer),
+                    // whichever of the icon (fixed 2rem) or the heading text
+                    // is wider sets the box's width, and the narrower of the
+                    // two should sit centered under/over the other rather
+                    // than flush to the left edge.
+                    text-align: center;
                 }
             }
 
@@ -93,13 +99,19 @@
                 height: auto;
                 min-width: 0;
                 min-height: 0;
+                // Centers the icon itself (see .ability-image's margin: 0
+                // auto below) when the heading text below it is wider than
+                // the icon's fixed 2rem, and centers the heading text (via
+                // the text-align above) when the icon is the wider one.
+                text-align: center;
             }
 
             .ability-image {
                 width: 2rem; /* Set a fixed width for ability images */
                 height: 2rem; /* Set a fixed height for ability images */
                 display: block; /* Ensure consistent spacing */
-                
+                margin: 0 auto; /* Center within a wider auto-sized heading slot */
+
                 // Performance optimizations for images
                 image-rendering: -webkit-optimize-contrast; /* Better image rendering */
                 image-rendering: crisp-edges; /* Crisp edges for pixel art */
