@@ -290,6 +290,7 @@ export class App implements AfterViewInit {
     this.resetAbilityProgress();
     this.currentWave = null;
     this.hpZeroActive = false;
+    this.hpZeroAdvancePendingAt = null;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // give a manual cycle the same grace window as a manual restart, so it isn't instantly overridden by the still-visible banner
 
     //update selected value of radiobuttons in ui
@@ -312,6 +313,7 @@ export class App implements AfterViewInit {
     this.resetAbilityProgress();
     this.currentWave = null;
     this.hpZeroActive = false;
+    this.hpZeroAdvancePendingAt = null;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000;
 
     const rotationRadios = document.querySelectorAll('input[name="rotationSelector"]');
@@ -576,6 +578,13 @@ export class App implements AfterViewInit {
   private hpZeroActive = false;
   private readonly HP_ZERO_CHECK_INTERVAL_MS = 200;
 
+  // The rotation switch itself is delayed from the HP-0% detection by the
+  // "Phase Advance Delay" setting (default 12s) -- players are still using
+  // the current phase's overlay for a while after HP hits 0% (e.g. Vorago's
+  // ~24s countdown to the next phase actually starting), so switching the
+  // instant the 0% glyph is seen would pull the callouts out from under them.
+  private hpZeroAdvancePendingAt: number | null = null;
+
   startOverlay() {
     if (!this.hasAlt1()) {
       return;
@@ -634,23 +643,35 @@ export class App implements AfterViewInit {
         if (isZeroHp && !this.hpZeroActive) {
           this.hpZeroActive = true;
 
-          if (Date.now() >= this.suppressAutoPhaseSwitchUntil) {
-            const numRots = this.selectedRotationSet?.Data.length || 0;
-            // Don't wrap: the same 0% glyph also fires on the actual kill,
-            // and looping back to rotation 0 there would be wrong, not helpful.
-            if (this.selectedIndex + 1 < numRots) {
-              this.selectedIndex++;
-              this.resetAbilityProgress();
-              this.currentWave = null;
-              // Same grace window as a manual cycle/restart, so the still-visible
-              // 0% glyph from this same trigger can't immediately fire again.
-              this.suppressAutoPhaseSwitchUntil = Date.now() + 3000;
-              this.markOverlayDirty();
-              this.showRotationNameOverlay();
-            }
+          // Don't schedule a switch if one is already pending (shouldn't
+          // normally happen given hpZeroActive gates re-triggering, but
+          // guards against re-arming the delay on a flicker).
+          if (this.hpZeroAdvancePendingAt === null) {
+            const delaySeconds = this.getSettingValue('hpZeroPhaseAdvanceDelay') ?? 12;
+            this.hpZeroAdvancePendingAt = Date.now() + (delaySeconds * 1000);
           }
         } else if (!isZeroHp) {
           this.hpZeroActive = false;
+        }
+      }
+
+      if (this.hpZeroAdvancePendingAt !== null && now >= this.hpZeroAdvancePendingAt) {
+        this.hpZeroAdvancePendingAt = null;
+
+        if (Date.now() >= this.suppressAutoPhaseSwitchUntil) {
+          const numRots = this.selectedRotationSet?.Data.length || 0;
+          // Don't wrap: the same 0% glyph also fires on the actual kill,
+          // and looping back to rotation 0 there would be wrong, not helpful.
+          if (this.selectedIndex + 1 < numRots) {
+            this.selectedIndex++;
+            this.resetAbilityProgress();
+            this.currentWave = null;
+            // Same grace window as a manual cycle/restart, so a still-pending
+            // or repeat HP-0% trigger from this same drop can't immediately fire again.
+            this.suppressAutoPhaseSwitchUntil = Date.now() + 3000;
+            this.markOverlayDirty();
+            this.showRotationNameOverlay();
+          }
         }
       }
 
@@ -1000,6 +1021,7 @@ export class App implements AfterViewInit {
     this.resetAbilityProgress();
     this.currentWave = null;
     this.hpZeroActive = false;
+    this.hpZeroAdvancePendingAt = null;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // same grace window as cycleRotationSet/restartRotation, so a manual pick via the UI isn't instantly overridden either
     this.markOverlayDirty();
     this.showRotationNameOverlay();

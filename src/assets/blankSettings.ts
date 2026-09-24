@@ -11,6 +11,7 @@ export const blankSettings: (SettingConfig)[] = [
     new ColorSettingConfig('headingColor', 'Heading Text Color', '#ffcb05', false, 'Text color for "## " heading notes in the rotation preview.'),
     new BoolSettingConfig('previewOnly', 'Preview Only Mode', false, false, 'Show only the selected rotation preview and hide other UI elements'),
     new BoolSettingConfig('hpZeroPhaseAdvance', 'Auto-advance on Boss HP 0% (no phase banner)', false, false, 'For bosses with no on-screen phase/wave banner (e.g. Vorago): watches for the boss HP hitting 0% and automatically advances to the next rotation. Leave off for bosses already handled by Phase/Wave detection.'),
+    new RangeSettingConfig('hpZeroPhaseAdvanceDelay', 'Phase Advance Delay (after Boss HP 0%)', 0, 30, 12, 's', false, 'How long to wait after Boss HP hits 0% before actually switching the overlay to the next rotation. Only applies when "Auto-advance on Boss HP 0%" is on -- keeps the current rotation on screen for a bit longer while players finish using it (e.g. Vorago\'s bomb-tank berserk around the 10s mark of the 24s countdown).'),
     new SettingConfig('updatingOverlayPosition', SettingTypeEnum.Boolean, false, true),
     new SettingConfig('lastKnownVersion', SettingTypeEnum.Text, '0.0.1', true)
 ];
