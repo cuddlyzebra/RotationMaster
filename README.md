@@ -31,6 +31,20 @@ Section headings (`## Phase 2` / `## Phase 2a`) with a widened gap before the se
 
 Copy and paste this line into your web browser's address bar `alt1://addapp/https://cuddlyzebra.github.io/RotationMaster/appconfig.json` - optionally, you can edit the title yourself when prompted to install, to help distinguish this version over the original version of the app.
 
+### Refreshing the app if a feature seems missing
+
+This app is hosted on GitHub Pages and loaded inside Alt1's own embedded browser, which sometimes keeps showing a cached, older copy of the page even after the site itself has updated — a setting you'd expect to see might just not be there yet, or something might look visually broken. If that happens, force a fresh reload rather than assuming something's wrong:
+
+1. Open the app's settings (wrench icon) and enable the address bar option, if it isn't already on.
+
+   ![Enabling the address bar](src/assets/howto1.png)
+
+2. With the address bar visible, click its refresh button to force the page to reload from scratch, bypassing the cached copy.
+
+   ![Refreshing the page from the address bar](src/assets/howto2.png)
+
+This should only be needed right after the app itself has been updated — if things still look wrong after a refresh, it's worth reporting rather than assuming it's a caching issue.
+
 ## Credit
 
 All core functionality (rotation building, the Alt1 overlay, wave/phase detection, settings) is from the original [RotationMaster](https://github.com/Ellamental2/RotationMaster) project. This fork only adds the changes described above.
