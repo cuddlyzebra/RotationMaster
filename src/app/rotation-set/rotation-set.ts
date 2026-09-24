@@ -116,7 +116,9 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
       obj.Separator,
       obj.SelectedAbility ? this.reviveAbility(obj.SelectedAbility) : null,
       obj.Notes,
-      obj.Id || obj.id || null
+      obj.Id || obj.id || null,
+      obj.HeadingSize ?? null,
+      obj.HeadingColor ?? null
     );
   }
 
@@ -444,7 +446,9 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
         selection.seperator ?? selection.Separator ?? '→',
         ability,
         selection.notes || selection.Notes || null,
-        selection.id || selection.Id || null
+        selection.id || selection.Id || null,
+        selection.headingSize ?? selection.HeadingSize ?? null,
+        selection.headingColor ?? selection.HeadingColor ?? null
       );
     };
 

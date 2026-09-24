@@ -72,6 +72,37 @@
         />
       Heading
     </label>
+    @if (isHeading) {
+      <input
+        type="number"
+        class="nisinput heading-size-input"
+        [min]="10"
+        [max]="40"
+        placeholder="auto"
+        title="Font size for just this heading, in px (leave blank to use the global 'Heading Text Size' setting)"
+        [ngModel]="headingSize"
+        (ngModelChange)="onHeadingSizeChange($event)"
+        />
+
+      <div class="heading-color-row">
+        <label class="heading-color-toggle" title="Use a different colour for just this heading instead of the global 'Heading Text Color' setting">
+          <input
+            type="checkbox"
+            [ngModel]="isCustomHeadingColor"
+            (ngModelChange)="onHeadingColorToggle($event)"
+            />
+          Custom colour
+        </label>
+        @if (isCustomHeadingColor) {
+          <input
+            type="color"
+            class="heading-color-input"
+            [ngModel]="headingColorValue"
+            (ngModelChange)="onHeadingColorChange($event)"
+            />
+        }
+      </div>
+    }
   </div>
 
   <div class="button-dropdown">

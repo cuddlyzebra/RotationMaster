@@ -118,12 +118,22 @@ export class AbilitySelection {
     Separator: string;
     SelectedAbility: Ability | null;
     Notes: string | null;
+    // Per-row override for the heading font size (px), only meaningful when
+    // Notes is a "## " heading. null/undefined means "use the global
+    // 'Heading Text Size' setting" -- most headings won't set this.
+    HeadingSize: number | null;
+    // Same idea for colour -- null/undefined means "use the global
+    // 'Heading Text Color' setting". Lets e.g. a "Phase 2" heading and a
+    // "Phase 2a" sub-heading show in different colours from one another.
+    HeadingColor: string | null;
 
-    constructor(separator: string = '→', selectedAbility: Ability | null = null, notes: string | null = null, id: string | null = null) {
+    constructor(separator: string = '→', selectedAbility: Ability | null = null, notes: string | null = null, id: string | null = null, headingSize: number | null = null, headingColor: string | null = null) {
         this.Id = id ?? createAbilitySelectionId();
         this.Separator = separator;
         this.SelectedAbility = selectedAbility;
         this.Notes = notes;
+        this.HeadingSize = headingSize;
+        this.HeadingColor = headingColor;
     }
 }
 

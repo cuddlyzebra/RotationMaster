@@ -99,6 +99,75 @@
   }
 }
 
+// Per-row override for the heading font size -- only shown once a row is
+// actually set as a heading (see isHeading in the .ts file). Blank means
+// "use the global Heading Text Size setting".
+.heading-size-input {
+  width: 100px !important;
+  min-width: 0 !important;
+  max-width: 100px !important;
+  flex: none !important;
+  box-sizing: border-box;
+  padding: 0 2px !important;
+  text-align: center;
+}
+
+// Per-row override for the heading colour -- same idea as heading size
+// above, but off by default (a checkbox enables it rather than blank =
+// inherit), since a colour has no natural "empty" state the way a number
+// field does.
+.heading-color-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.heading-color-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #94afbd;
+  text-shadow: 1px 1px #000000;
+  white-space: nowrap;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin: 0;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+}
+
+.heading-color-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 18px;
+  border: 1px solid #4e443c;
+  border-radius: 3px;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+  }
+
+  &::-moz-color-swatch {
+    border: none;
+    border-radius: 2px;
+  }
+}
+
 .ability-image-container
 {
     width: 2rem;

@@ -13,6 +13,17 @@ const HEADING_PREFIX = '## ';
 const MIN_ROW_BREAK_GAP = 1;
 const MAX_ROW_BREAK_GAP = 5;
 
+// Kept in sync with the "Heading Text Size" range setting's bounds
+// (blankSettings.ts) -- a per-row override should stay within the same
+// range as the global default it's overriding.
+const MIN_HEADING_SIZE = 10;
+const MAX_HEADING_SIZE = 40;
+
+// Starting point for a per-row colour override the first time it's enabled --
+// matches the default "Heading Text Color" setting, so switching the toggle
+// on doesn't visibly change anything until the swatch is actually edited.
+const DEFAULT_HEADING_COLOR = '#ffcb05';
+
 @Component({
     selector: 'rm-ability-selector',
     templateUrl: './ability-selector.html',
@@ -89,11 +100,57 @@ export class AbilitySelector {
   onHeadingToggle(checked: boolean) {
     const text = this.notesText;
     this.abilitySelection.Notes = checked ? (HEADING_PREFIX + text) : (text || null);
+    if (!checked) {
+      // No longer a heading -- drop any per-row overrides so they don't
+      // silently resurface if this row is ever turned back into a heading.
+      this.abilitySelection.HeadingSize = null;
+      this.abilitySelection.HeadingColor = null;
+    }
     this.abilitySelectionChange.emit(this.abilitySelection);
   }
 
   onNotesTextChange(text: string) {
     this.abilitySelection.Notes = this.isHeading ? (HEADING_PREFIX + text) : (text || null);
+    this.abilitySelectionChange.emit(this.abilitySelection);
+  }
+
+  // Per-row heading size override -- null/blank means "use the global
+  // Heading Text Size setting", which is the common case, so this only
+  // shows once a row is actually a heading.
+  get headingSize(): number | null {
+    return this.abilitySelection.HeadingSize ?? null;
+  }
+
+  onHeadingSizeChange(value: number | string | null) {
+    if (value === '' || value === null || value === undefined) {
+      this.abilitySelection.HeadingSize = null;
+    } else {
+      const parsed = Math.round(Number(value));
+      this.abilitySelection.HeadingSize = Number.isFinite(parsed)
+        ? Math.max(MIN_HEADING_SIZE, Math.min(MAX_HEADING_SIZE, parsed))
+        : null;
+    }
+    this.abilitySelectionChange.emit(this.abilitySelection);
+  }
+
+  // Per-row heading colour override -- off by default (uses the global
+  // "Heading Text Color" setting). Toggling it on seeds the swatch with
+  // that same default so nothing visibly jumps until it's actually changed.
+  get isCustomHeadingColor(): boolean {
+    return this.abilitySelection.HeadingColor !== null && this.abilitySelection.HeadingColor !== undefined;
+  }
+
+  get headingColorValue(): string {
+    return this.abilitySelection.HeadingColor ?? DEFAULT_HEADING_COLOR;
+  }
+
+  onHeadingColorToggle(checked: boolean) {
+    this.abilitySelection.HeadingColor = checked ? (this.abilitySelection.HeadingColor ?? DEFAULT_HEADING_COLOR) : null;
+    this.abilitySelectionChange.emit(this.abilitySelection);
+  }
+
+  onHeadingColorChange(value: string) {
+    this.abilitySelection.HeadingColor = value;
     this.abilitySelectionChange.emit(this.abilitySelection);
   }
 

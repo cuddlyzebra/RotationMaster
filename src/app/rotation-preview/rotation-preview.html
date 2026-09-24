@@ -36,8 +36,8 @@
                 @if (isHeadingNote(item.selection.Notes)) {
                   <p
                     class="ability-note ability-note-heading"
-                    [style.font-size.px]="headingFontSize"
-                    [style.color]="headingColor"
+                    [style.font-size.px]="item.selection.HeadingSize ?? headingFontSize"
+                    [style.color]="item.selection.HeadingColor ?? headingColor"
                     >
                     {{ headingText(item.selection.Notes) }}
                   </p>
