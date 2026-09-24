@@ -676,7 +676,13 @@ export class App implements AfterViewInit {
 
     const updateOverlay = async () => {
       const now = Date.now();
-      if (now - this.lastWaveCheck >= 500) {
+      // Wave/Phase-banner OCR detection and HP-zero detection are meant to
+      // be mutually exclusive (see the "Auto-advance on Boss HP 0%" setting
+      // description) -- a boss picked for HP-zero advance has no real wave
+      // banner on screen, so this scan would just be reading noise and can
+      // misfire a switch to a random phase whose Wave number happens to
+      // match. Skip the scan entirely while HP-zero advance is in use.
+      if (!this.getSettingValue('hpZeroPhaseAdvance') && now - this.lastWaveCheck >= 500) {
         this.lastWaveCheck = now;
         let wavePos = this.findWave();
         if (wavePos) {
@@ -739,7 +745,8 @@ export class App implements AfterViewInit {
         }
       }
 
-      if (this.currentWave !== null &&
+      if (!this.getSettingValue('hpZeroPhaseAdvance') &&
+        this.currentWave !== null &&
         Date.now() >= this.suppressAutoPhaseSwitchUntil &&
         this.selectedRotationSet.Data.some(rs => rs.Wave == this.currentWave) &&
         this.selectedRotationSet.Data[this.selectedIndex]?.Wave != this.currentWave) {
