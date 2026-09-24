@@ -20,6 +20,10 @@ This is a fork of [RotationMaster](https://github.com/Ellamental2/RotationMaster
   - Heading appearance is customizable from Settings: **"Heading Text Size"** (a slider, 10–40px) and **"Heading Text Color"** (a colour picker) apply to every heading in the overlay by default. Each heading row can also override either of these individually from the designer: a number field appears next to a ticked Heading checkbox for a size override (leave blank to keep using the global setting), and a **"Custom colour"** checkbox below it reveals a colour swatch for a colour override on just that heading — handy for giving something like a "Phase 2" heading and its "Phase 2a" sub-heading visibly different colours or sizes from one another.
   - When an ability icon is paired with a heading, the icon is now centered relative to the heading text rather than sitting flush against the left edge — this matters once a heading is wider than the icon (or vice versa).
 
+- **Per-phase overlay position** — each phase/rotation can now have its own on-screen position instead of always sharing the one global "Overlay Position". Next to a rotation's Name/Wave fields, a crosshair button starts the same Alt+1 drag-to-position flow as the global "Set Overlay Position" button in Settings, but saves the result onto that phase only; a second button appears once a phase has a custom position, to drop it back to using the default. Useful when a bigger phase (say, one with a lot more abilities/headings) would otherwise cover up something on screen that a smaller phase doesn't.
+
+- **Configurable delay before HP-zero phase auto-advance** — when "Auto-advance on Boss HP 0% (no phase banner)" is on, a new **"Phase Advance Delay (after Boss HP 0%)"** slider (0–30s, default 12s) controls how long the current phase's overlay stays up after HP hits 0% before switching to the next one. Useful for fights (e.g. Vorago) where players are still using the current phase's callouts for several seconds after HP drops, before the next phase's mechanics actually start.
+
 ### Example
 
 ![Rotation preview with duplicate-ability colour coding](src/assets/testingimg1.png)

@@ -1,5 +1,5 @@
-import { AfterViewInit, Component, DOCUMENT, Inject, signal } from '@angular/core';
-import { BoolSettingConfig, ColorSettingConfig, IPatch, Patch, Position, RangeSettingConfig, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
+import { AfterViewInit, Component, DOCUMENT, Inject, ViewChild, signal } from '@angular/core';
+import { BoolSettingConfig, ColorSettingConfig, IPatch, Patch, Position, RangeSettingConfig, Rotation, RotationSet, SettingConfig, SettingTypeEnum, normalizeLineBreakSpacing } from '../models';
 import { blankSettings } from '../assets/blankSettings';
 import patchnotes from '../patchnotes.json';
 import { PatchNotesComponent } from './patch-notes/patch-notes';
@@ -20,6 +20,10 @@ import { isBlankSpacer } from '../abilitiesLookup';
 })
 export class App implements AfterViewInit {
 
+  // Used to persist a per-phase overlay position (see updateOverlayPosition())
+  // straight into the in-memory rotation set the same way any other rotation
+  // edit is persisted -- not saved to localStorage until the user hits Save.
+  @ViewChild(RotationSetComponent) rotationSetComponent?: RotationSetComponent;
 
   imgs: any = {};
 
@@ -35,6 +39,15 @@ export class App implements AfterViewInit {
   selectedRotationSet: RotationSet = new RotationSet();
   selectedIndex: number = 0;
   updatingOverlayPosition = false;
+  // When set, the active position-drag (see updateOverlayPosition()) is
+  // customizing this rotation's OverlayPosition rather than the global
+  // default "Overlay Position" setting.
+  private positioningRotationId: number | null = null;
+  // Live mouse-tracked position while a drag is in progress. Read by
+  // getOverlayPositionForRotation() so the preview follows the cursor;
+  // for a per-phase drag this avoids writing to settings storage every
+  // frame the way the global-position drag already does.
+  private draftOverlayPosition: { x: number, y: number } | null = null;
   overlayInitialized: boolean = false;
   private overlayDirty = true;
   private cachedOverlayEncoded: string | null = null;
@@ -510,32 +523,69 @@ export class App implements AfterViewInit {
     return null;
   }
 
-  async updateOverlayPosition(){
-    let oldPosition = this.getSettingValue('overlayPosition') || { x: 100, y: 100 };
+  // Resolves the position an overlay should actually be drawn at: the given
+  // rotation's own OverlayPosition override if it has one, otherwise falls
+  // back to the global "Overlay Position" setting. While a drag is active
+  // (see updateOverlayPosition()), the live cursor-tracked position always
+  // wins, whichever of the two it will end up saved as.
+  private getOverlayPositionForRotation(rotation: Rotation | null | undefined): { x: number, y: number } {
+    if (this.updatingOverlayPosition && this.draftOverlayPosition) {
+      return this.draftOverlayPosition;
+    }
+    return rotation?.OverlayPosition ?? this.getSettingValue('overlayPosition') ?? { x: 100, y: 100 };
+  }
+
+  // Starts the Alt1 mouse-tracking drag loop used to position the overlay.
+  // With no rotationId, this sets the global default "Overlay Position"
+  // setting (previous behavior, unchanged). With a rotationId, it instead
+  // gives just that phase its own position override, saved onto the
+  // Rotation itself once Alt+1 is pressed -- handy when one phase's overlay
+  // is bigger/smaller than the others and covers up something it shouldn't.
+  async updateOverlayPosition(rotationId?: number){
+    this.positioningRotationId = rotationId ?? null;
+    const targetRotation = this.positioningRotationId !== null
+      ? this.selectedRotationSet.Data.find(r => r.Id === this.positioningRotationId) ?? null
+      : null;
+
+    this.draftOverlayPosition = this.getOverlayPositionForRotation(targetRotation);
     this.updatingOverlayPosition = true;
     this.getById('rotationMaster')?.classList.toggle('positioning', this.updatingOverlayPosition);
+
+    const tooltip = targetRotation
+      ? `Press Alt+1 to save position for "${targetRotation.Name}"`
+      : 'Press Alt+1 to save position';
 
     const updatePosition = async () => {
       if (!this.updatingOverlayPosition) {
         return;
       }
 
-      alt1.setTooltip('Press Alt+1 to save position');
+      alt1.setTooltip(tooltip);
       let abilitiesElement = this.getById('OverlayCanvasOutput');
       const uiScale = this.getSettingValue('uiScale') || 100;
-      this.onUpdateSetting({
-        name: 'overlayPosition',
-        value: {
-          x: Math.floor(
-            a1lib.getMousePosition()?.x ?? 100 -
-            (uiScale / 100) * (abilitiesElement?.offsetWidth ?? 2 / 2)
-          ),
-          y: Math.floor(
-            a1lib.getMousePosition()?.y ?? 100 -
-              (uiScale / 100) * (abilitiesElement?.offsetHeight ?? 2 / 2)
-          )
-        }
-      });
+      const nextPosition = {
+        x: Math.floor(
+          a1lib.getMousePosition()?.x ?? 100 -
+          (uiScale / 100) * (abilitiesElement?.offsetWidth ?? 2 / 2)
+        ),
+        y: Math.floor(
+          a1lib.getMousePosition()?.y ?? 100 -
+            (uiScale / 100) * (abilitiesElement?.offsetHeight ?? 2 / 2)
+        )
+      };
+      this.draftOverlayPosition = nextPosition;
+
+      if (this.positioningRotationId === null) {
+        // Global default -- same as before, write straight to settings
+        // storage every frame so it's picked up live.
+        this.onUpdateSetting({ name: 'overlayPosition', value: nextPosition });
+      }
+      // Per-phase override -- not persisted until Alt+1 is pressed (see
+      // stopUpdatingOverlayPosition()). No markOverlayDirty() needed here:
+      // getOverlayPositionForRotation() already returns this live draft
+      // position every frame, and the render loop repaints the existing
+      // cached overlay image at that position without recapturing it --
+      // same cheap path the global-position drag already relies on.
 
       // Schedule next update using requestAnimationFrame for smooth updates
       requestAnimationFrame(() => {
@@ -558,7 +608,21 @@ export class App implements AfterViewInit {
     this.updatingOverlayPosition = false;
     this.getById('rotationMaster')?.classList.toggle('positioning', false);
     alt1.clearTooltip();
-    const currentOverlayPosition = this.getSettingValue('overlayPosition') || { x: 100, y: 100 };
+
+    if (this.positioningRotationId !== null && this.draftOverlayPosition) {
+      const rotation = this.selectedRotationSet.Data.find(r => r.Id === this.positioningRotationId);
+      if (rotation) {
+        rotation.OverlayPosition = this.draftOverlayPosition;
+        // Push into the rotation set's own in-memory copy so it's included
+        // next time the user exports/saves -- same as any other edit made
+        // through the designer.
+        this.rotationSetComponent?.updateRotation(rotation);
+      }
+    }
+
+    this.positioningRotationId = null;
+    this.draftOverlayPosition = null;
+    this.markOverlayDirty();
     alt1.overLayRefreshGroup('rotMasterRegion');
   }
 
@@ -702,7 +766,7 @@ export class App implements AfterViewInit {
         return;
       }
 
-      const overlayPosition = this.getSettingValue('overlayPosition') || { x: 100, y: 100 };
+      const overlayPosition = this.getOverlayPositionForRotation(selectedRotation as Rotation);
       if (!this.overlayDirty && paintCachedOverlay(overlayPosition)) {
         setTimeout(() => requestAnimationFrame(updateOverlay), refreshRate);
         return;
@@ -950,7 +1014,7 @@ export class App implements AfterViewInit {
       return;
     }
 
-    const overlayPosition = this.getSettingValue('overlayPosition') || { x: 100, y: 100 };
+    const overlayPosition = this.getOverlayPositionForRotation(selectedRotation);
     const rotationName = override ?? selectedRotation.Name;
 
     // Create a canvas for the label

@@ -23,6 +23,10 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
 
   @Output() changeSelectedRotation = new EventEmitter<number>();
   @Output() rotationSetChange = new EventEmitter<RotationSet>();
+  // Passed straight through from rm-rotation-container -- app.ts owns the
+  // actual Alt1 mouse-tracking drag loop for positioning (see its
+  // updateOverlayPosition()).
+  @Output() setPositionForRotation = new EventEmitter<number>();
 
   savedRotationSets: RotationSet[] = [];
   rotationSet: RotationSet = new RotationSet();
@@ -127,7 +131,8 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
       obj.Id,
       obj.Name,
       obj.Data?.map((obj: any) => this.reviveAbilitySelection(obj)),
-      obj.Wave
+      obj.Wave,
+      obj.OverlayPosition ?? null
     );
   }
 
@@ -465,7 +470,8 @@ export class RotationSetComponent implements OnDestroy, OnChanges {
         Id: rotation.id || rotation.Id || 0,
         Name: rotation.name || rotation.Name || this.defaultRotationName,
         Data: normalizedSelections,
-        Wave: rotation.wave || rotation.Wave || null
+        Wave: rotation.wave || rotation.Wave || null,
+        OverlayPosition: rotation.overlayPosition ?? rotation.OverlayPosition ?? null
       };
     };
 

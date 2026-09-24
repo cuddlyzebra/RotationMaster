@@ -22,6 +22,22 @@
         placeholder="Phase/Wave"
         (input)="onRotationChange()"
         />
+      <button
+        class="nisbutton"
+        (click)="onSetPosition()"
+        [title]="rotation.OverlayPosition ? 'Re-drag this phase\'s custom on-screen position' : 'Give this phase its own on-screen position (instead of the default one everyone shares)'"
+        >
+        <i class="fa-solid fa-crosshairs"></i>
+      </button>
+      @if (rotation.OverlayPosition) {
+        <button
+          class="nisbutton"
+          (click)="onClearPosition()"
+          title="Remove this phase's custom position and go back to using the default position"
+          >
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+      }
       @if (showDetails) {
         <button
           class="nisbutton"

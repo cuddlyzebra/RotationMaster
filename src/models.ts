@@ -104,12 +104,18 @@ export class Rotation {
     Name: string;
     Data: AbilitySelection[];
     Wave: number | null = null;
+    // Per-phase override for where the overlay is drawn on screen. null/undefined
+    // means "use the global 'Overlay Position' setting" -- lets a bigger/smaller
+    // phase be nudged out of the way of a different part of the screen without
+    // moving every other phase along with it.
+    OverlayPosition: { x: number, y: number } | null;
 
-    constructor(id: number | null = null, name: string | null = null, data: AbilitySelection[] | null = null, wave: number | null = null) {
+    constructor(id: number | null = null, name: string | null = null, data: AbilitySelection[] | null = null, wave: number | null = null, overlayPosition: { x: number, y: number } | null = null) {
         this.Id = id ?? 0;
         this.Name = name ?? 'New Rotation';
         this.Data = data ?? [new AbilitySelection()];
         this.Wave = wave ?? null;
+        this.OverlayPosition = overlayPosition ?? null;
     }
 }
 

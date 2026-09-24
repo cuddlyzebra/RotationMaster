@@ -34,6 +34,9 @@ export class RotationContainerComponent implements OnDestroy {
   @Output() modalStateChange = new EventEmitter<boolean>();
   @Output() loading = new EventEmitter<boolean>();
   @Output() focusOnRotation = new EventEmitter<number>();
+  // Bubbles up to app.ts, which owns the Alt1 mouse-tracking drag loop used
+  // to position overlays (see app.ts's updateOverlayPosition()).
+  @Output() setPositionForRotation = new EventEmitter<number>();
   // @Output() reorderRotation = new EventEmitter<{ previousIndex: number, newIndex: number }>();
 
   // Modal properties
@@ -54,6 +57,18 @@ export class RotationContainerComponent implements OnDestroy {
 
   onDelete() {
     this.deleteRotation.emit(this.rotation.Id);
+  }
+
+  onSetPosition() {
+    // Select this rotation too, so the live overlay being dragged (and the
+    // "Press Alt+1 to save position" prompt) is actually showing this phase.
+    this.rotationSelected.emit(this.rotation.Id);
+    this.setPositionForRotation.emit(this.rotation.Id);
+  }
+
+  onClearPosition() {
+    this.rotation.OverlayPosition = null;
+    this.onRotationChange();
   }
 
   onRotationChange() {
