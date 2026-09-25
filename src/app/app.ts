@@ -303,6 +303,7 @@ export class App implements AfterViewInit {
     this.resetAbilityProgress();
     this.currentWave = null;
     this.hpZeroActive = false;
+    this.hpZeroFirstSeenAt = null;
     this.hpZeroAdvancePendingAt = null;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // give a manual cycle the same grace window as a manual restart, so it isn't instantly overridden by the still-visible banner
 
@@ -326,6 +327,7 @@ export class App implements AfterViewInit {
     this.resetAbilityProgress();
     this.currentWave = null;
     this.hpZeroActive = false;
+    this.hpZeroFirstSeenAt = null;
     this.hpZeroAdvancePendingAt = null;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000;
 
@@ -649,6 +651,16 @@ export class App implements AfterViewInit {
   // same drop (the double phase-switch this guards against).
   private hpZeroLastSeenAt = 0;
   private readonly HP_ZERO_CLEAR_DEBOUNCE_MS = 1000;
+  // findZeroHp() matches the CURRENT TARGET's HP hitting 0%, full-screen,
+  // not specifically Vorago's -- so tabbing to a combat dummy, or killing
+  // any other NPC during the fight, produces the exact same glyph. A dead
+  // NPC/dummy's health bar disappears again within about a second, while
+  // Vorago's real 0% state sits on screen for the whole ~24s countdown, so
+  // requiring the glyph to be seen continuously for a few seconds before
+  // it's accepted filters out those false triggers without needing to
+  // scope the capture to a specific screen region.
+  private hpZeroFirstSeenAt: number | null = null;
+  private readonly HP_ZERO_SUSTAIN_REQUIRED_MS = 3000;
 
   // The rotation switch itself is delayed from the HP-0% detection by the
   // "Phase Advance Delay" setting (default 12s) -- players are still using
@@ -719,9 +731,13 @@ export class App implements AfterViewInit {
         const isZeroHp = this.findZeroHp();
 
         if (isZeroHp) {
+          if (this.hpZeroFirstSeenAt === null) {
+            this.hpZeroFirstSeenAt = now;
+          }
           this.hpZeroLastSeenAt = now;
 
-          if (!this.hpZeroActive) {
+          const sustainedLongEnough = now - this.hpZeroFirstSeenAt >= this.HP_ZERO_SUSTAIN_REQUIRED_MS;
+          if (sustainedLongEnough && !this.hpZeroActive) {
             this.hpZeroActive = true;
 
             // Don't schedule a switch if one is already pending (shouldn't
@@ -732,8 +748,9 @@ export class App implements AfterViewInit {
               this.hpZeroAdvancePendingAt = Date.now() + (delaySeconds * 1000);
             }
           }
-        } else if (this.hpZeroActive && now - this.hpZeroLastSeenAt >= this.HP_ZERO_CLEAR_DEBOUNCE_MS) {
+        } else if (now - this.hpZeroLastSeenAt >= this.HP_ZERO_CLEAR_DEBOUNCE_MS) {
           this.hpZeroActive = false;
+          this.hpZeroFirstSeenAt = null;
         }
       }
 
@@ -1104,6 +1121,7 @@ export class App implements AfterViewInit {
     this.resetAbilityProgress();
     this.currentWave = null;
     this.hpZeroActive = false;
+    this.hpZeroFirstSeenAt = null;
     this.hpZeroAdvancePendingAt = null;
     this.suppressAutoPhaseSwitchUntil = Date.now() + 5000; // same grace window as cycleRotationSet/restartRotation, so a manual pick via the UI isn't instantly overridden either
     this.markOverlayDirty();
