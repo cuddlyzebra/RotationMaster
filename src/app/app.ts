@@ -408,9 +408,14 @@ export class App implements AfterViewInit {
     console.log('findWave: phase matches =', phasePoslist.length, this.imgs['phase']);
 
     if (phasePoslist.length > 0){
+      // Some bosses (e.g. Kerapac) show a second frame to the right of the Phase
+      // button (the "Hard" button) that matches this same border template, and
+      // the match order isn't stable -- so always take the left-most hit, which
+      // is the Phase button, rather than whichever happens to be first.
+      const phaseHit = phasePoslist.reduce((a, b) => (b.x < a.x ? b : a));
       return new Position(
-        phasePoslist[0].x,
-        phasePoslist[0].y,
+        phaseHit.x,
+        phaseHit.y,
         98,   // matches the new border-only template (98x31), measured across 5 independent captures
         31,   // (3 phase numbers, 2 backgrounds, both capture paths — mean pixel diff 0.14/255)
         25,   // local x-offset where "Phase: " text begins within the matched region
