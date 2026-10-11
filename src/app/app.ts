@@ -413,13 +413,19 @@ export class App implements AfterViewInit {
       // the match order isn't stable -- so always take the left-most hit, which
       // is the Phase button, rather than whichever happens to be first.
       const phaseHit = phasePoslist.reduce((a, b) => (b.x < a.x ? b : a));
+      // Read only the INSIDE of the button (just the "Phase: N" text), not the
+      // whole 98x31 template area: the gold frame is bright enough to survive
+      // the OCR binarize step, and its fragments were being read as stray
+      // digits (7, 12, ...) that made the phase flicker. The template origin
+      // is (phaseHit.x, phaseHit.y); the text interior is offset (20, 7) and
+      // 64x16, which keeps the frame out while leaving room for 2-digit numbers.
       return new Position(
-        phaseHit.x,
-        phaseHit.y,
-        98,   // matches the new border-only template (98x31), measured across 5 independent captures
-        31,   // (3 phase numbers, 2 backgrounds, both capture paths — mean pixel diff 0.14/255)
-        25,   // local x-offset where "Phase: " text begins within the matched region
-        10    // local y-offset where text begins
+        phaseHit.x + 20,
+        phaseHit.y + 7,
+        64,
+        16,
+        5,    // local x-offset where "Phase: " text begins within this region (25 - 20)
+        3     // local y-offset where text begins (10 - 7)
       )
     };
 
@@ -640,6 +646,10 @@ export class App implements AfterViewInit {
 
   private currentBossHealth: number | null = null;
   private currentWave: number | null = null;
+  // Debounce for phase/wave reads (see the wave scan in updateOverlay()).
+  private pendingWave: number | null = null;
+  private pendingWaveCount = 0;
+  private readonly WAVE_CONFIRM_READS = 2;
 
   // HP-zero-based phase advance (Vorago-style, see findZeroHp()). Checked on
   // its own faster cadence -- the 0% glyph is only ever on screen briefly --
@@ -713,9 +723,28 @@ export class App implements AfterViewInit {
         if (wavePos) {
           let waveNum = await this.readImageNum(wavePos);
           if (waveNum && this.currentWave !== waveNum) {
-            this.currentWave = waveNum;
-            console.log("Current wave/phase: " + waveNum);
+            // Only accept a change once the same number has been read on
+            // WAVE_CONFIRM_READS consecutive scans, so a single misread (or a
+            // frame caught mid-transition) can't flip the phase and back again.
+            if (this.pendingWave === waveNum) {
+              this.pendingWaveCount++;
+            } else {
+              this.pendingWave = waveNum;
+              this.pendingWaveCount = 1;
+            }
+            if (this.pendingWaveCount >= this.WAVE_CONFIRM_READS) {
+              this.currentWave = waveNum;
+              this.pendingWave = null;
+              this.pendingWaveCount = 0;
+              console.log("Current wave/phase: " + waveNum);
+            }
+          } else {
+            this.pendingWave = null;
+            this.pendingWaveCount = 0;
           }
+        } else {
+          this.pendingWave = null;
+          this.pendingWaveCount = 0;
         }
       }
 
